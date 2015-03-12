@@ -8,8 +8,7 @@ from subprocess import Popen, PIPE
 import xml.etree.ElementTree as ET
 
 def generate_build_xml_file_list(top_level_folder_path, all_runs_file, run_date):
-    # print("I am inside generate_build_xml_file_list")
-    # print(top_level_folder_path, all_runs_file, run_date) 
+
     cmd = 'find ' + top_level_folder_path + ' -name build.xml'
     args = shlex.split(cmd)
     p1 = Popen(args,
@@ -24,8 +23,6 @@ def generate_build_xml_file_list(top_level_folder_path, all_runs_file, run_date)
             print(err.decode('utf-8'), end='')
 
 def process_build_xml_file_list(run_date, all_runs_file, jobs_output_data_folder):
-    # print("I am inside process_build_xml_file_list")
-    # print(run_date, all_runs_file, jobs_output_data_folder)
 
     # define variables to capture overall data
     total_num_of_jobs = 0
@@ -37,7 +34,7 @@ def process_build_xml_file_list(run_date, all_runs_file, jobs_output_data_folder
             build_xml_file_name = line.strip()
             job_name, job_date, job_time_hr, job_time_min = get_job_run_basics(build_xml_file_name)
             job_duration, job_builton, job_result = process_build_xml_file(build_xml_file_name)
-            print(job_name, job_date, job_time_hr, job_time_min, job_duration, job_builton, job_result)
+            #print(job_name, job_date, job_time_hr, job_time_min, job_duration, job_builton, job_result)
             total_num_of_jobs = total_num_of_jobs + 1
             if job_builton not in nodes:
                 nodes[job_builton] = {
@@ -59,17 +56,26 @@ def process_build_xml_file_list(run_date, all_runs_file, jobs_output_data_folder
         node_file.close()
     
     # Generate summary report
-    generate_ci_metrics_report(run_date, total_num_of_jobs, node_total_runs)
+    jobs_summary_report_filename = jobs_output_data_folder + '/' + run_date + '-summary.txt'
+    generate_ci_metrics_report(run_date, total_num_of_jobs, node_total_runs, jobs_summary_report_filename)
 
-def generate_ci_metrics_report(run_date, total_num_of_jobs, node_total_runs):
+def generate_ci_metrics_report(run_date, total_num_of_jobs, node_total_runs, jobs_summary_report_filename):
     run_date_obj = datetime.datetime.strptime(run_date, '%Y-%m-%d').date()
+    summary = open(jobs_summary_report_filename, 'w')
     print('*' * 50)
+    summary.write('*' * 50 + '\n')
     print("Date of CI Metrics Report Run:", run_date)
+    summary.write("Date of CI Metrics Report Run: " + run_date + '\n')
     print("Day of the week:", run_date_obj.strftime("%A"))
+    summary.write("Day of the week: " + run_date_obj.strftime("%A") + '\n')
     print("Total Number of Job execution:", total_num_of_jobs)
+    summary.write("Total Number of Job execution: " + str(total_num_of_jobs) + '\n')
     for node in sorted(node_total_runs.keys()):
         print("Total Number of Job executed on Node \"" +  node + "\":", node_total_runs[node])
+        summary.write("Total Number of Job executed on Node \"" +  node + "\": " + str(node_total_runs[node]) + '\n')
     print('*' * 50)
+    summary.write('*' * 50 + '\n')
+    summary.close()
 
 def process_build_xml_file(build_xml_file_name):
         tree = ET.parse(build_xml_file_name)
