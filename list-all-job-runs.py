@@ -44,38 +44,97 @@ def process_build_xml_file_list(run_date, all_runs_file, jobs_output_data_folder
             nodes[job_builton][job_time_hr] = nodes[job_builton][job_time_hr] + 1
     
     # Generate the node related metrics file for each node that ran a job on that day
-    node_total_runs = {}
     for node, node_times in nodes.items():
-        node_total_runs[node] = 0
-        node_total_runs_count = 0
         node_file = open(jobs_output_data_folder + '/' + node + '.txt', 'w')
         for hr in sorted(node_times.keys()):
-            node_total_runs_count = node_total_runs_count + node_times[hr]
             node_file.write(hr + ': ' + str(node_times[hr]) + '\n')
-        node_total_runs[node] = node_total_runs_count
         node_file.close()
     
     # Generate summary report
     jobs_summary_report_filename = jobs_output_data_folder + '/' + run_date + '-summary.txt'
-    generate_ci_metrics_report(run_date, total_num_of_jobs, node_total_runs, jobs_summary_report_filename)
+    generate_ci_metrics_report(run_date, total_num_of_jobs, nodes, jobs_summary_report_filename)
 
-def generate_ci_metrics_report(run_date, total_num_of_jobs, node_total_runs, jobs_summary_report_filename):
+def generate_ci_metrics_report(run_date, total_num_of_jobs, nodes, jobs_summary_report_filename):
     run_date_obj = datetime.datetime.strptime(run_date, '%Y-%m-%d').date()
     summary = open(jobs_summary_report_filename, 'w')
-    print('*' * 50)
-    summary.write('*' * 50 + '\n')
+    print('*' * 150)
+    summary.write('*' * 150 + '\n')
     print("Date of CI Metrics Report Run:", run_date)
     summary.write("Date of CI Metrics Report Run: " + run_date + '\n')
-    print("Day of the week:", run_date_obj.strftime("%A"))
-    summary.write("Day of the week: " + run_date_obj.strftime("%A") + '\n')
+    print("Day of the week:", run_date_obj.strftime("%A").upper())
+    summary.write("Day of the week: " + run_date_obj.strftime("%A").upper() + '\n')
     print("Total Number of Job execution:", total_num_of_jobs)
     summary.write("Total Number of Job execution: " + str(total_num_of_jobs) + '\n')
-    for node in sorted(node_total_runs.keys()):
-        print("Total Number of Job executed on Node \"" +  node + "\":", node_total_runs[node])
-        summary.write("Total Number of Job executed on Node \"" +  node + "\": " + str(node_total_runs[node]) + '\n')
-    print('*' * 50)
-    summary.write('*' * 50 + '\n')
+    for node, node_times in nodes.items():
+        node_total_count = 0
+        node_hourly_output = ''
+        for hr in sorted(node_times.keys()):
+            node_total_count = node_total_count + node_times[hr]
+            if node_times[hr] != 0:
+                node_hourly_output = node_hourly_output + '[' + user_friendly_time(hr) + ': ' + str(node_times[hr]) + ']' 
+        print("Total Number of Job executed on Node \"" +  node + "\":", node_total_count, end=' ')
+        summary.write("Total Number of Job executed on Node \"" +  node + "\": " + str(node_total_count))
+        print(node_hourly_output)
+        summary.write(node_hourly_output + '\n')
+    print('*' * 150)
+    summary.write('*' * 150 + '\n')
     summary.close()
+
+
+def user_friendly_time(hr):
+    user_friendly_hr = ''
+    if hr == '00':
+        user_friendly_hr = '12 to 1 AM'
+    elif hr == '01':
+        user_friendly_hr = '1 to 2 AM'
+    elif hr == '02':
+        user_friendly_hr = '2 to 3 AM'
+    elif hr == '03':
+        user_friendly_hr = '3 to 4 AM'
+    elif hr == '04':
+        user_friendly_hr = '4 to 5 AM'
+    elif hr == '05':
+        user_friendly_hr = '5 to 6 AM'
+    elif hr == '06':
+        user_friendly_hr = '6 to 7 AM'
+    elif hr == '07':
+        user_friendly_hr = '7 to 8 AM'
+    elif hr == '08':
+        user_friendly_hr = '8 to 9 AM'
+    elif hr == '09':
+        user_friendly_hr = '9 to 10 AM'
+    elif hr == '10':
+        user_friendly_hr = '10 to 11 AM'
+    elif hr == '11':
+        user_friendly_hr = '11 to 12 PM'
+    elif hr == '12':
+        user_friendly_hr = '12 to 1 PM'
+    elif hr == '13':
+        user_friendly_hr = '1 to 2 PM'
+    elif hr == '14':
+        user_friendly_hr = '2 to 3 PM'
+    elif hr == '15':
+        user_friendly_hr = '3 to 4 PM'
+    elif hr == '16':
+        user_friendly_hr = '4 to 5 PM'
+    elif hr == '17':
+        user_friendly_hr = '5 to 6 PM'
+    elif hr == '18':
+        user_friendly_hr = '6 to 7 PM'
+    elif hr == '19':
+        user_friendly_hr = '7 to 8 PM'
+    elif hr == '20':
+        user_friendly_hr = '8 to 9 PM'
+    elif hr == '21':
+        user_friendly_hr = '9 to 10 PM'
+    elif hr == '22':
+        user_friendly_hr = '10 to 11 PM'
+    elif hr == '23':
+        user_friendly_hr = '11 to 12 AM'
+
+    return user_friendly_hr
+
+
 
 def process_build_xml_file(build_xml_file_name):
         tree = ET.parse(build_xml_file_name)
