@@ -4,7 +4,6 @@ import shlex
 import sys
 import os
 import glob
-import operator
 from subprocess import Popen, PIPE
 import xml.etree.ElementTree as ET
 
@@ -36,7 +35,7 @@ def process_build_xml_file_list(run_date, all_runs_file, jobs_output_data_folder
             build_xml_file_name = line.strip()
             job_key, job_name, job_date, job_time_hr, job_time_min = get_job_run_basics(build_xml_file_name)
             job_duration, job_builton, job_result = process_build_xml_file(build_xml_file_name)
-            print(job_key, job_name, job_date, job_time_hr, job_time_min, job_duration, job_builton, job_result)
+            #print(job_key, job_name, job_date, job_time_hr, job_time_min, job_duration, job_builton, job_result)
             total_num_of_jobs = total_num_of_jobs + 1
             if job_builton not in nodes:
                 nodes[job_builton] = {
@@ -58,14 +57,10 @@ def process_build_xml_file_list(run_date, all_runs_file, jobs_output_data_folder
     
     # Generate summary report
     jobs_summary_report_filename = jobs_output_data_folder + '/' + run_date + '-summary.txt'
-    if len(jobs) > 1:
-        sorted_jobs_list_of_tuples = sorted(jobs.items(), key=operator.itemgetter(1)).reverse()
-        reverse_jobs = dict(sorted_jobs_list_of_tuples)
-        generate_ci_metrics_report(run_date, total_num_of_jobs, nodes, jobs_summary_report_filename, reverse_jobs)
-    else:
-        generate_ci_metrics_report(run_date, total_num_of_jobs, nodes, jobs_summary_report_filename, jobs)
+    generate_ci_metrics_report(run_date, total_num_of_jobs, nodes, jobs_summary_report_filename, jobs)
 
-def generate_ci_metrics_report(run_date, total_num_of_jobs, nodes, jobs_summary_report_filename, jobs_dict):
+
+def generate_ci_metrics_report(run_date, total_num_of_jobs, nodes, jobs_summary_report_filename, jobs):
     run_date_obj = datetime.datetime.strptime(run_date, '%Y-%m-%d').date()
     summary = open(jobs_summary_report_filename, 'w')
     print('*' * 150)
@@ -76,16 +71,16 @@ def generate_ci_metrics_report(run_date, total_num_of_jobs, nodes, jobs_summary_
     summary.write("Day of the week: " + run_date_obj.strftime("%A").upper() + '\n')
     print("Total Number of Job Runs:", total_num_of_jobs)
     summary.write("Total Number of Job Runs: " + str(total_num_of_jobs) + '\n')
-    print("Total Number of Unique Jobs:", len(jobs_dict))
-    summary.write("Total Number of Unique Jobs:" + str(len(jobs_dict)) + '\n')
+    print("Total Number of Unique Jobs:", len(jobs))
+    summary.write("Total Number of Unique Jobs:" + str(len(jobs)) + '\n')
     job_sub_title = "Top 5 Jobs, by Job Runs:"
     print(job_sub_title)
     summary.write(job_sub_title + '\n')
     job_count = 0
-    for job, job_run in jobs_dict.items():
+    for job, job_run in sorted(jobs.iteritems(), key=lambda (k,v): (v, k), reverse=True):
         job_count = job_count + 1
         if job_count < 6:
-            print("\t" + job, "=", job_run)
+            print("\t" + job, " = ", job_run)
             summary.write(job + ' = ' + str(job_run) + '\n')
     nodes_sub_title = "Node Details:"
     print(nodes_sub_title)
@@ -97,8 +92,8 @@ def generate_ci_metrics_report(run_date, total_num_of_jobs, nodes, jobs_summary_
             node_total_count = node_total_count + node_times[hr]
             if node_times[hr] != 0:
                 node_hourly_output = node_hourly_output + '[' + user_friendly_time(hr) + ': ' + str(node_times[hr]) + ']' 
-        print("\tJob Runs on Node \"" +  node + "\" = ", node_total_count, end=' ')
-        summary.write("\tJob Runs on Node \"" +  node + "\" = " + str(node_total_count) + ' ')
+        print("\tJob Runs on Node \"" +  node + "\"\t = ", node_total_count, end=' ')
+        summary.write("\tJob Runs on Node \"" +  node + "\"\t = " + str(node_total_count) + ' ')
         print(node_hourly_output)
         summary.write(node_hourly_output + '\n')
 
