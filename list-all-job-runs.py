@@ -81,7 +81,7 @@ def generate_ci_metrics_report(run_date, total_num_of_jobs, nodes, jobs_summary_
         job_count = job_count + 1
         if job_count < 6:
             print("\t" + job, " = ", job_run)
-            summary.write(job + ' = ' + str(job_run) + '\n')
+            summary.write("\t" + job + ' = ' + str(job_run) + '\n')
     nodes_sub_title = "Node Details:"
     print(nodes_sub_title)
     summary.write(nodes_sub_title + '\n')
