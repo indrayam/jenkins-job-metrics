@@ -4,6 +4,7 @@ import shlex
 import sys
 import os
 import glob
+import operator
 from subprocess import Popen, PIPE
 import xml.etree.ElementTree as ET
 
@@ -27,14 +28,15 @@ def process_build_xml_file_list(run_date, all_runs_file, jobs_output_data_folder
     # define variables to capture overall data
     total_num_of_jobs = 0
     nodes = {}
+    jobs = {}
 
     # Process all build.xml files in all-runs.txt and set up dictionary of dictionaries data structure
     with open(all_runs_file, 'r') as file:
         for line in file:
             build_xml_file_name = line.strip()
-            job_name, job_date, job_time_hr, job_time_min = get_job_run_basics(build_xml_file_name)
+            job_key, job_name, job_date, job_time_hr, job_time_min = get_job_run_basics(build_xml_file_name)
             job_duration, job_builton, job_result = process_build_xml_file(build_xml_file_name)
-            #print(job_name, job_date, job_time_hr, job_time_min, job_duration, job_builton, job_result)
+            print(job_key, job_name, job_date, job_time_hr, job_time_min, job_duration, job_builton, job_result)
             total_num_of_jobs = total_num_of_jobs + 1
             if job_builton not in nodes:
                 nodes[job_builton] = {
@@ -42,6 +44,10 @@ def process_build_xml_file_list(run_date, all_runs_file, jobs_output_data_folder
                     '13': 0, '14': 0, '15': 0, '16': 0, '17': 0, '18': 0, '19': 0, '20': 0, '21': 0, '22': 0, '23': 0
                 }
             nodes[job_builton][job_time_hr] = nodes[job_builton][job_time_hr] + 1
+            if job_key not in jobs:
+                jobs[job_key] = 1
+            else:
+                jobs[job_key] = jobs[job_key] + 1
     
     # Generate the node related metrics file for each node that ran a job on that day
     for node, node_times in nodes.items():
@@ -52,9 +58,14 @@ def process_build_xml_file_list(run_date, all_runs_file, jobs_output_data_folder
     
     # Generate summary report
     jobs_summary_report_filename = jobs_output_data_folder + '/' + run_date + '-summary.txt'
-    generate_ci_metrics_report(run_date, total_num_of_jobs, nodes, jobs_summary_report_filename)
+    if len(jobs) > 1:
+        sorted_jobs_list_of_tuples = sorted(jobs.items(), key=operator.itemgetter(1)).reverse()
+        reverse_jobs = dict(sorted_jobs_list_of_tuples)
+        generate_ci_metrics_report(run_date, total_num_of_jobs, nodes, jobs_summary_report_filename, reverse_jobs)
+    else:
+        generate_ci_metrics_report(run_date, total_num_of_jobs, nodes, jobs_summary_report_filename, jobs)
 
-def generate_ci_metrics_report(run_date, total_num_of_jobs, nodes, jobs_summary_report_filename):
+def generate_ci_metrics_report(run_date, total_num_of_jobs, nodes, jobs_summary_report_filename, jobs_dict):
     run_date_obj = datetime.datetime.strptime(run_date, '%Y-%m-%d').date()
     summary = open(jobs_summary_report_filename, 'w')
     print('*' * 150)
@@ -63,8 +74,22 @@ def generate_ci_metrics_report(run_date, total_num_of_jobs, nodes, jobs_summary_
     summary.write("Date of CI Metrics Report Run: " + run_date + '\n')
     print("Day of the week:", run_date_obj.strftime("%A").upper())
     summary.write("Day of the week: " + run_date_obj.strftime("%A").upper() + '\n')
-    print("Total Number of Job execution:", total_num_of_jobs)
-    summary.write("Total Number of Job execution: " + str(total_num_of_jobs) + '\n')
+    print("Total Number of Job Runs:", total_num_of_jobs)
+    summary.write("Total Number of Job Runs: " + str(total_num_of_jobs) + '\n')
+    print("Total Number of Unique Jobs:", len(jobs_dict))
+    summary.write("Total Number of Unique Jobs:" + str(len(jobs_dict)) + '\n')
+    job_sub_title = "Top 5 Jobs, by Job Runs:"
+    print(job_sub_title)
+    summary.write(job_sub_title + '\n')
+    job_count = 0
+    for job, job_run in jobs_dict.items():
+        job_count = job_count + 1
+        if job_count < 6:
+            print("\t" + job, "=", job_run)
+            summary.write(job + ' = ' + str(job_run) + '\n')
+    nodes_sub_title = "Node Details:"
+    print(nodes_sub_title)
+    summary.write(nodes_sub_title + '\n')
     for node, node_times in nodes.items():
         node_total_count = 0
         node_hourly_output = ''
@@ -72,10 +97,12 @@ def generate_ci_metrics_report(run_date, total_num_of_jobs, nodes, jobs_summary_
             node_total_count = node_total_count + node_times[hr]
             if node_times[hr] != 0:
                 node_hourly_output = node_hourly_output + '[' + user_friendly_time(hr) + ': ' + str(node_times[hr]) + ']' 
-        print("Total Number of Job executed on Node \"" +  node + "\":", node_total_count, end=' ')
-        summary.write("Total Number of Job executed on Node \"" +  node + "\": " + str(node_total_count))
+        print("\tJob Runs on Node \"" +  node + "\" = ", node_total_count, end=' ')
+        summary.write("\tJob Runs on Node \"" +  node + "\" = " + str(node_total_count) + ' ')
         print(node_hourly_output)
         summary.write(node_hourly_output + '\n')
+
+
     print('*' * 150)
     summary.write('*' * 150 + '\n')
     summary.close()
@@ -135,7 +162,6 @@ def user_friendly_time(hr):
     return user_friendly_hr
 
 
-
 def process_build_xml_file(build_xml_file_name):
         tree = ET.parse(build_xml_file_name)
         root = tree.getroot()
@@ -154,13 +180,30 @@ def process_build_xml_file(build_xml_file_name):
 
 def get_job_run_basics(job_run):
     line_tokens = job_run.split('/')
+    job_key = get_job_key(line_tokens[:-3])
     job_name = line_tokens[-4]
     job_date_tokens = line_tokens[-2].split('_')
     job_date = job_date_tokens[0]
     job_time_tokens = job_date_tokens[1].split('-')
     job_time_hr = job_time_tokens[0]
     job_time_min = job_time_tokens[1]
-    return job_name, job_date, job_time_hr, job_time_min
+    return job_key, job_name, job_date, job_time_hr, job_time_min
+
+
+def get_job_key(line_tokens):
+    count = 0
+    for el in line_tokens:
+        if el == 'jobs' and count == 0:
+            job_key = ''
+            count = count + 1
+        elif el != 'jobs':
+            if count == 1:
+                job_key = el
+                count = count + 1
+            else:
+                job_key = job_key + ':' + el
+
+    return job_key
 
 
 if __name__ == "__main__":
