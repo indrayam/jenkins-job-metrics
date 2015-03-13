@@ -88,7 +88,7 @@ def generate_ci_metrics_report(run_date, total_num_of_jobs, nodes, jobs_summary_
     print("Day of the week:", run_date_obj.strftime("%A"))
     summary.write("Day of the week: " + run_date_obj.strftime("%A") + '\n')
 
-    print("Total Number of Job Runs:", total_num_of_jobs)
+    print("Total Number of Job Runs: ", total_num_of_jobs)
     summary.write("Total Number of Job Runs: " + str(total_num_of_jobs) + '\n')
     print("\tJob Run Status: ", end='')
     summary.write("\t")
@@ -130,15 +130,21 @@ def generate_ci_metrics_report(run_date, total_num_of_jobs, nodes, jobs_summary_
     summary.write(nodes_sub_title + '\n')
     for node, node_times in nodes.items():
         node_total_count = 0
-        node_hourly_output = '\tBy Time (PST): |'
+        node_max_count = 0
+        node_min_count = 0
+        node_hourly_output = '\t\tBy Time (PST): |'
         for hr in sorted(node_times.keys()):
             node_total_count = node_total_count + node_times[hr]
             if node_times[hr] != 0:
                 node_hourly_output = node_hourly_output + str(node_times[hr]) + '|'
+                if node_times[hr] > node_max_count:
+                    node_max_count = node_times[hr]
+                if node_times[hr] < node_min_count:
+                    node_min_count = node_times[hr]
             else:
                 node_hourly_output = node_hourly_output + str(node_times[hr]) + '|'
-        print("\tJob Runs on Node \"" +  node + "\"\t = ", node_total_count, end='')
-        summary.write("\tJob Runs on Node \"" +  node + "\"\t = " + str(node_total_count))
+        print("\tJob Runs on Node \"" +  node + "\"\t = ", node_total_count, "Max Job Runs per Hr:", str(node_max_count) + ", Min Job Runs per Hr:", str(node_min_count))
+        summary.write("\tJob Runs on Node \"" +  node + "\"\t = " + str(node_total_count) + "Max Job Runs per Hr: " + str(node_max_count) + ", Min Job Runs per Hr: " + str(node_min_count) + '\n')
         print(node_hourly_output)
         summary.write(node_hourly_output + '\n')
 
@@ -252,7 +258,7 @@ if __name__ == "__main__":
         sys.exit(1)
     else:
         run_date = sys.argv[2]
-        jobs_output_data_folder = os.getcwd() + '/ci-metrics/'
+        jobs_output_data_folder = os.getcwd() + '/ci-metrics-python/'
         jobs_output_data_folder_by_date = jobs_output_data_folder + run_date
         if not os.path.exists(jobs_output_data_folder_by_date):
             os.makedirs(jobs_output_data_folder_by_date)

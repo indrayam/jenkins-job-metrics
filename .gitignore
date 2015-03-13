@@ -1,6 +1,6 @@
 .idea/
 jobs/
-ci-metrics/
+ci-metrics-python/
 test*
 *.txt
 tmp/
