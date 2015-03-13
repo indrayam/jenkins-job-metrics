@@ -4,6 +4,7 @@ import shlex
 import sys
 import os
 import glob
+from colorama import Fore, Back
 from subprocess import Popen, PIPE
 import xml.etree.ElementTree as ET
 
@@ -26,10 +27,13 @@ def process_build_xml_file_list(run_date, all_runs_file, jobs_output_data_folder
 
     # define variables to capture overall data
     total_num_of_jobs = 0
+    job_runs = {}
+    job_results = {}
     nodes = {}
-    jobs = {}
+    
 
     # Process all build.xml files in all-runs.txt and set up dictionary of dictionaries data structure
+    jobs_output_data_folder_by_date = jobs_output_data_folder + run_date
     with open(all_runs_file, 'r') as file:
         for line in file:
             build_xml_file_name = line.strip()
@@ -43,41 +47,56 @@ def process_build_xml_file_list(run_date, all_runs_file, jobs_output_data_folder
                     '13': 0, '14': 0, '15': 0, '16': 0, '17': 0, '18': 0, '19': 0, '20': 0, '21': 0, '22': 0, '23': 0
                 }
             nodes[job_builton][job_time_hr] = nodes[job_builton][job_time_hr] + 1
-            if job_key not in jobs:
-                jobs[job_key] = 1
+            if job_key not in job_runs:
+                job_runs[job_key] = 1
             else:
-                jobs[job_key] = jobs[job_key] + 1
+                job_runs[job_key] = job_runs[job_key] + 1
+            if job_result not in job_results:
+                job_results[job_result] = 1
+            else:
+                job_results[job_result] = job_results[job_result] + 1
     
     # Generate the node related metrics file for each node that ran a job on that day
     for node, node_times in nodes.items():
-        node_file = open(jobs_output_data_folder + '/' + node + '.txt', 'w')
+        node_file = open(jobs_output_data_folder_by_date + '/' + node + '.txt', 'w')
         for hr in sorted(node_times.keys()):
             node_file.write(hr + ': ' + str(node_times[hr]) + '\n')
         node_file.close()
     
     # Generate summary report
-    jobs_summary_report_filename = jobs_output_data_folder + '/' + run_date + '-summary.txt'
-    generate_ci_metrics_report(run_date, total_num_of_jobs, nodes, jobs_summary_report_filename, jobs)
+    jobs_summary_report_filename = jobs_output_data_folder + run_date + '-summary.txt'
+    generate_ci_metrics_report(run_date, total_num_of_jobs, nodes, jobs_summary_report_filename, job_runs, job_results)
 
 
-def generate_ci_metrics_report(run_date, total_num_of_jobs, nodes, jobs_summary_report_filename, jobs):
+def generate_ci_metrics_report(run_date, total_num_of_jobs, nodes, jobs_summary_report_filename, job_runs, job_results):
     run_date_obj = datetime.datetime.strptime(run_date, '%Y-%m-%d').date()
     summary = open(jobs_summary_report_filename, 'w')
     print('*' * 150)
     summary.write('*' * 150 + '\n')
-    print("Date of CI Metrics Report Run:", run_date)
-    summary.write("Date of CI Metrics Report Run: " + run_date + '\n')
-    print("Day of the week:", run_date_obj.strftime("%A").upper())
-    summary.write("Day of the week: " + run_date_obj.strftime("%A").upper() + '\n')
-    print("Total Number of Job Runs:", total_num_of_jobs)
-    summary.write("Total Number of Job Runs: " + str(total_num_of_jobs) + '\n')
-    print("Total Number of Unique Jobs:", len(jobs))
-    summary.write("Total Number of Unique Jobs:" + str(len(jobs)) + '\n')
+    print("Date of CI Metrics Report Run:", Fore.BLACK, Back.GREEN, run_date, Fore.RESET, Back.RESET)
+    summary.write("Date of CI Metrics Report Run: " + Fore.BLACK + Back.GREEN + run_date + Fore.RESET + Back.RESET + '\n')
+    print("Day of the week:", run_date_obj.strftime("%A"))
+    summary.write("Day of the week: " + run_date_obj.strftime("%A") + '\n')
+    print("Total Number of Job Runs:", Fore.GREEN, total_num_of_jobs, Fore.RESET)
+    summary.write("Total Number of Job Runs: " + Fore.GREEN + str(total_num_of_jobs) + Fore.RESET + '\n')
+    print("\tJob Run Status: ", end='')
+    summary.write("\t")
+    job_result_output = ''
+    for job_result_type, job_result_frequency in job_results.items():
+        if job_result_type == 'SUCCESS':
+            job_result_output = job_result_output + job_result_type + ' = ' + Fore.GREEN + str(job_result_frequency) + Fore.RESET + ', '
+        else:
+            job_result_output = job_result_output + job_result_type + ' = ' + Fore.RED + str(job_result_frequency) + Fore.RESET + ', '
+    job_result_output = job_result_output.strip(', ')
+    print(job_result_output)
+    summary.write(job_result_output + '\n')
+    print("Total Number of Unique Jobs:", Fore.BLUE, len(job_runs), Fore.RESET)
+    summary.write("Total Number of Unique Jobs:" + Fore.BLUE + str(len(job_runs)) + Fore.RESET + '\n')
     job_sub_title = "Top 5 Jobs, by Job Runs:"
     print(job_sub_title)
     summary.write(job_sub_title + '\n')
     job_count = 0
-    for job, job_run in sorted(jobs.iteritems(), key=lambda (k,v): (v, k), reverse=True):
+    for job, job_run in sorted(job_runs.iteritems(), key=lambda (k,v): (v, k), reverse=True):
         job_count = job_count + 1
         if job_count < 6:
             print("\t" + job, " = ", job_run)
@@ -87,13 +106,15 @@ def generate_ci_metrics_report(run_date, total_num_of_jobs, nodes, jobs_summary_
     summary.write(nodes_sub_title + '\n')
     for node, node_times in nodes.items():
         node_total_count = 0
-        node_hourly_output = ''
+        node_hourly_output = '\tBy Time (PST): |'
         for hr in sorted(node_times.keys()):
             node_total_count = node_total_count + node_times[hr]
             if node_times[hr] != 0:
-                node_hourly_output = node_hourly_output + '[' + user_friendly_time(hr) + ': ' + str(node_times[hr]) + ']' 
-        print("\tJob Runs on Node \"" +  node + "\"\t = ", node_total_count, end=' ')
-        summary.write("\tJob Runs on Node \"" +  node + "\"\t = " + str(node_total_count) + ' ')
+                node_hourly_output = node_hourly_output + Fore.BLACK + Back.YELLOW + str(node_times[hr]) + Fore.RESET + Back.RESET + '|'
+            else:
+                node_hourly_output = node_hourly_output + str(node_times[hr]) + '|'
+        print("\tJob Runs on Node \"" +  node + "\"\t = ", node_total_count, end='')
+        summary.write("\tJob Runs on Node \"" +  node + "\"\t = " + str(node_total_count))
         print(node_hourly_output)
         summary.write(node_hourly_output + '\n')
 
@@ -207,9 +228,10 @@ if __name__ == "__main__":
         sys.exit(1)
     else:
         run_date = sys.argv[2]
-        jobs_output_data_folder = os.getcwd() + '/ci-metrics/' + run_date 
-        if not os.path.exists(jobs_output_data_folder):
-            os.makedirs(jobs_output_data_folder)
+        jobs_output_data_folder = os.getcwd() + '/ci-metrics/'
+        jobs_output_data_folder_by_date = jobs_output_data_folder + run_date
+        if not os.path.exists(jobs_output_data_folder_by_date):
+            os.makedirs(jobs_output_data_folder_by_date)
         top_level_folder_path = sys.argv[1]
         run_date = sys.argv[2]
         all_runs_file = os.getcwd() + '/all-runs.txt'
