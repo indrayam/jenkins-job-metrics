@@ -28,6 +28,7 @@ def process_build_xml_file_list(run_date, all_runs_file, jobs_output_data_folder
     # define variables to capture overall data
     total_num_of_jobs = 0
     job_runs = {}
+    job_runs_by_org = {}
     job_results = {}
     nodes = {}
     
@@ -47,14 +48,22 @@ def process_build_xml_file_list(run_date, all_runs_file, jobs_output_data_folder
                     '13': 0, '14': 0, '15': 0, '16': 0, '17': 0, '18': 0, '19': 0, '20': 0, '21': 0, '22': 0, '23': 0
                 }
             nodes[job_builton][job_time_hr] = nodes[job_builton][job_time_hr] + 1
+            
             if job_key not in job_runs:
                 job_runs[job_key] = 1
             else:
                 job_runs[job_key] = job_runs[job_key] + 1
+            
             if job_result not in job_results:
                 job_results[job_result] = 1
             else:
                 job_results[job_result] = job_results[job_result] + 1
+
+            job_org_key = job_key.split(':')[0]
+            if job_org_key not in job_runs_by_org:
+                job_runs_by_org[job_org_key] = 1
+            else:
+                job_runs_by_org[job_org_key] = job_runs_by_org[job_org_key] + 1         
     
     # Generate the node related metrics file for each node that ran a job on that day
     for node, node_times in nodes.items():
@@ -65,18 +74,21 @@ def process_build_xml_file_list(run_date, all_runs_file, jobs_output_data_folder
     
     # Generate summary report
     jobs_summary_report_filename = jobs_output_data_folder + run_date + '-summary.txt'
-    generate_ci_metrics_report(run_date, total_num_of_jobs, nodes, jobs_summary_report_filename, job_runs, job_results)
+    generate_ci_metrics_report(run_date, total_num_of_jobs, nodes, jobs_summary_report_filename, job_runs, job_results, job_runs_by_org)
 
 
-def generate_ci_metrics_report(run_date, total_num_of_jobs, nodes, jobs_summary_report_filename, job_runs, job_results):
+def generate_ci_metrics_report(run_date, total_num_of_jobs, nodes, jobs_summary_report_filename, job_runs, job_results, job_runs_by_org):
     run_date_obj = datetime.datetime.strptime(run_date, '%Y-%m-%d').date()
     summary = open(jobs_summary_report_filename, 'w')
     print('*' * 150)
     summary.write('*' * 150 + '\n')
+
     print("Date of CI Metrics Report Run:", Fore.BLACK, Back.GREEN, run_date, Fore.RESET, Back.RESET)
     summary.write("Date of CI Metrics Report Run: " + Fore.BLACK + Back.GREEN + run_date + Fore.RESET + Back.RESET + '\n')
+
     print("Day of the week:", run_date_obj.strftime("%A"))
     summary.write("Day of the week: " + run_date_obj.strftime("%A") + '\n')
+
     print("Total Number of Job Runs:", Fore.GREEN, total_num_of_jobs, Fore.RESET)
     summary.write("Total Number of Job Runs: " + Fore.GREEN + str(total_num_of_jobs) + Fore.RESET + '\n')
     print("\tJob Run Status: ", end='')
@@ -90,8 +102,10 @@ def generate_ci_metrics_report(run_date, total_num_of_jobs, nodes, jobs_summary_
     job_result_output = job_result_output.strip(', ')
     print(job_result_output)
     summary.write(job_result_output + '\n')
+
     print("Total Number of Unique Jobs:", Fore.BLUE, len(job_runs), Fore.RESET)
     summary.write("Total Number of Unique Jobs:" + Fore.BLUE + str(len(job_runs)) + Fore.RESET + '\n')
+ 
     job_sub_title = "Top 5 Jobs, by Job Runs:"
     print(job_sub_title)
     summary.write(job_sub_title + '\n')
@@ -101,7 +115,18 @@ def generate_ci_metrics_report(run_date, total_num_of_jobs, nodes, jobs_summary_
         if job_count < 6:
             print("\t" + job, " = ", job_run)
             summary.write("\t" + job + ' = ' + str(job_run) + '\n')
-    nodes_sub_title = "Node Details:"
+
+    job_org_sub_title = "Top 5 Orgs, by Job Runs:"
+    print(job_org_sub_title)
+    summary.write(job_org_sub_title + '\n')
+    job_org_count = 0
+    for job_org, job_org_run in sorted(job_runs_by_org.iteritems(), key=lambda (k,v): (v, k), reverse=True):
+        job_org_count = job_org_count + 1
+        if job_org_count < 6:
+            print("\t" + job_org, " = ", job_org_run)
+            summary.write("\t" + job_org + ' = ' + str(job_org_run) + '\n')
+
+    nodes_sub_title = "Job Run Details, By Nodes:"
     print(nodes_sub_title)
     summary.write(nodes_sub_title + '\n')
     for node, node_times in nodes.items():
@@ -179,19 +204,19 @@ def user_friendly_time(hr):
 
 
 def process_build_xml_file(build_xml_file_name):
-        tree = ET.parse(build_xml_file_name)
-        root = tree.getroot()
-        job_duration = 'Undef'
-        job_builton = 'Undef'
-        job_result = 'Undef'
-        for child in root:
-            if child.tag == 'duration':
-                job_duration = child.text
-            elif child.tag == 'builtOn':
-                job_builton = child.text
-            elif child.tag == 'result':
-                job_result = child.text
-        return job_duration, job_builton, job_result
+    tree = ET.parse(build_xml_file_name)
+    root = tree.getroot()
+    job_duration = 'Undef'
+    job_builton = 'Undef'
+    job_result = 'Undef'
+    for child in root:
+        if child.tag == 'duration':
+            job_duration = child.text
+        elif child.tag == 'builtOn':
+            job_builton = child.text
+        elif child.tag == 'result':
+            job_result = child.text
+    return job_duration, job_builton, job_result
 
 
 def get_job_run_basics(job_run):
