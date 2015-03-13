@@ -4,6 +4,7 @@ import shlex
 import sys
 import os
 import glob
+from colorama import Fore, Back
 from subprocess import Popen, PIPE
 import xml.etree.ElementTree as ET
 
@@ -82,28 +83,28 @@ def generate_ci_metrics_report(run_date, total_num_of_jobs, nodes, jobs_summary_
     print('*' * 150)
     summary.write('*' * 150 + '\n')
 
-    print("Date of CI Metrics Report Run:", run_date)
-    summary.write("Date of CI Metrics Report Run: " + run_date + '\n')
+    print("Date of CI Metrics Report Run:", Fore.BLACK, Back.GREEN, run_date, Fore.RESET, Back.RESET)
+    summary.write("Date of CI Metrics Report Run: " + Fore.BLACK + Back.GREEN + run_date + Fore.RESET + Back.RESET + '\n')
 
     print("Day of the week:", run_date_obj.strftime("%A"))
     summary.write("Day of the week: " + run_date_obj.strftime("%A") + '\n')
 
-    print("Total Number of Job Runs:", total_num_of_jobs)
-    summary.write("Total Number of Job Runs: " + str(total_num_of_jobs) + '\n')
+    print("Total Number of Job Runs:", Fore.GREEN, total_num_of_jobs, Fore.RESET)
+    summary.write("Total Number of Job Runs: " + Fore.GREEN + str(total_num_of_jobs) + Fore.RESET + '\n')
     print("\tJob Run Status: ", end='')
     summary.write("\t")
     job_result_output = ''
     for job_result_type, job_result_frequency in job_results.items():
         if job_result_type == 'SUCCESS':
-            job_result_output = job_result_output + job_result_type + ' = ' + str(job_result_frequency) + ', '
+            job_result_output = job_result_output + job_result_type + ' = ' + Fore.GREEN + str(job_result_frequency) + Fore.RESET + ', '
         else:
-            job_result_output = job_result_output + job_result_type + ' = ' + str(job_result_frequency) + ', '
+            job_result_output = job_result_output + job_result_type + ' = ' + Fore.RED + str(job_result_frequency) + Fore.RESET + ', '
     job_result_output = job_result_output.strip(', ')
     print(job_result_output)
     summary.write(job_result_output + '\n')
 
-    print("Total Number of Unique Jobs:", len(job_runs))
-    summary.write("Total Number of Unique Jobs:" + str(len(job_runs)) + '\n')
+    print("Total Number of Unique Jobs:", Fore.BLUE, len(job_runs), Fore.RESET)
+    summary.write("Total Number of Unique Jobs:" + Fore.BLUE + str(len(job_runs)) + Fore.RESET + '\n')
  
     job_sub_title = "Top 5 Jobs, by Job Runs:"
     print(job_sub_title)
@@ -134,7 +135,7 @@ def generate_ci_metrics_report(run_date, total_num_of_jobs, nodes, jobs_summary_
         for hr in sorted(node_times.keys()):
             node_total_count = node_total_count + node_times[hr]
             if node_times[hr] != 0:
-                node_hourly_output = node_hourly_output + str(node_times[hr]) + '|'
+                node_hourly_output = node_hourly_output + Fore.BLACK + Back.YELLOW + str(node_times[hr]) + Fore.RESET + Back.RESET + '|'
             else:
                 node_hourly_output = node_hourly_output + str(node_times[hr]) + '|'
         print("\tJob Runs on Node \"" +  node + "\"\t = ", node_total_count, end='')
