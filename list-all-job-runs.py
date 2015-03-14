@@ -1,11 +1,13 @@
 from __future__ import print_function
 import datetime
+import math
 import shlex
 import sys
 import os
 import glob
 from subprocess import Popen, PIPE
 import xml.etree.ElementTree as ET
+from color import red, green, yellow, blue, magenta, cyan, white
 
 def generate_build_xml_file_list(top_level_folder_path, all_runs_file, run_date):
 
@@ -65,14 +67,14 @@ def process_build_xml_file_list(run_date, all_runs_file, jobs_output_data_folder
                 job_runs_by_org[job_org_key] = job_runs_by_org[job_org_key] + 1         
     
     # Generate the node related metrics file for each node that ran a job on that day
-    for node, node_times in nodes.items():
-        node_file = open(jobs_output_data_folder_by_date + '/' + node + '.txt', 'w')
-        for hr in sorted(node_times.keys()):
-            node_file.write(hr + ': ' + str(node_times[hr]) + '\n')
-        node_file.close()
+    # for node, node_times in nodes.items():
+    #     node_file = open(jobs_output_data_folder_by_date + '/' + node + '.txt', 'w')
+    #     for hr in sorted(node_times.keys()):
+    #         node_file.write(hr + ': ' + str(node_times[hr]) + '\n')
+    #     node_file.close()
     
     # Generate summary report
-    jobs_summary_report_filename = jobs_output_data_folder + run_date + '-summary.txt'
+    jobs_summary_report_filename = jobs_output_data_folder + run_date + '.txt'
     generate_ci_metrics_report(run_date, total_num_of_jobs, nodes, jobs_summary_report_filename, job_runs, job_results, job_runs_by_org)
 
 
@@ -82,28 +84,28 @@ def generate_ci_metrics_report(run_date, total_num_of_jobs, nodes, jobs_summary_
     print('*' * 150)
     summary.write('*' * 150 + '\n')
 
-    print("Date of CI Metrics Report Run:", run_date)
-    summary.write("Date of CI Metrics Report Run: " + run_date + '\n')
+    print("Date of CI Metrics Report Run:", yellow(run_date))
+    summary.write("Date of CI Metrics Report Run: " + yellow(run_date) + '\n')
 
     print("Day of the week:", run_date_obj.strftime("%A"))
     summary.write("Day of the week: " + run_date_obj.strftime("%A") + '\n')
 
-    print("Total Number of Job Runs: ", total_num_of_jobs)
-    summary.write("Total Number of Job Runs: " + str(total_num_of_jobs) + '\n')
+    print("Total Number of Job Runs:", green(total_num_of_jobs))
+    summary.write("Total Number of Job Runs: " + green(total_num_of_jobs) + '\n')
     print("\tJob Run Status: ", end='')
     summary.write("\t")
     job_result_output = ''
     for job_result_type, job_result_frequency in job_results.items():
         if job_result_type == 'SUCCESS':
-            job_result_output = job_result_output + job_result_type + ' = ' + str(job_result_frequency) + ', '
+            job_result_output = job_result_output + job_result_type + ' = ' + green(job_result_frequency) + ', '
         else:
-            job_result_output = job_result_output + job_result_type + ' = ' + str(job_result_frequency) + ', '
+            job_result_output = job_result_output + job_result_type + ' = ' + red(job_result_frequency) + ', '
     job_result_output = job_result_output.strip(', ')
     print(job_result_output)
     summary.write(job_result_output + '\n')
 
-    print("Total Number of Unique Jobs:", len(job_runs))
-    summary.write("Total Number of Unique Jobs:" + str(len(job_runs)) + '\n')
+    print("Total Number of Unique Jobs:", green(len(job_runs)))
+    summary.write("Total Number of Unique Jobs: " + green(len(job_runs)) + '\n')
  
     job_sub_title = "Top 5 Jobs, by Job Runs:"
     print(job_sub_title)
@@ -130,21 +132,21 @@ def generate_ci_metrics_report(run_date, total_num_of_jobs, nodes, jobs_summary_
     summary.write(nodes_sub_title + '\n')
     for node, node_times in nodes.items():
         node_total_count = 0
-        node_max_count = 0
-        node_min_count = 0
+        node_times_values = node_times.values()
+        node_max_count = max(node_times_values)
+        node_min_count = min(node_times_values)
+        node_duration_p50, node_duration_p75 = return_percentiles(node_times_values)
         node_hourly_output = '\t\tBy Time (PST): |'
         for hr in sorted(node_times.keys()):
             node_total_count = node_total_count + node_times[hr]
             if node_times[hr] != 0:
-                node_hourly_output = node_hourly_output + str(node_times[hr]) + '|'
-                if node_times[hr] > node_max_count:
-                    node_max_count = node_times[hr]
-                if node_times[hr] < node_min_count:
-                    node_min_count = node_times[hr]
+                node_hourly_output = node_hourly_output + red(str(node_times[hr])) + '|'
             else:
                 node_hourly_output = node_hourly_output + str(node_times[hr]) + '|'
-        print("\tJob Runs on Node \"" +  node + "\"\t = ", node_total_count, "Max Job Runs per Hr:", str(node_max_count) + ", Min Job Runs per Hr:", str(node_min_count))
-        summary.write("\tJob Runs on Node \"" +  node + "\"\t = " + str(node_total_count) + "Max Job Runs per Hr: " + str(node_max_count) + ", Min Job Runs per Hr: " + str(node_min_count) + '\n')
+        print("\tJob Runs on Node \"" +  node + "\"\t = ", green(node_total_count))
+        summary.write("\tJob Runs on Node \"" +  node + "\"\t = " + red(node_total_count) + '\n')
+        print("\t\tNode Stats: Max Job Runs per Hr =", magenta(node_max_count) + ", Min Job Runs per Hr =", magenta(node_min_count) + ", 50th-percentile =", magenta(node_duration_p50) + ", 75th-percentile =", magenta(node_duration_p75))
+        summary.write("\t\tNode Stats: Max Job Runs per Hr = " + magenta(node_max_count) + ", Min Job Runs per Hr = " + magenta(node_min_count) + ", 50th-percentile = " + magenta(node_duration_p50) + ", 75th-percentile = " + magenta(node_duration_p75) + '\n')
         print(node_hourly_output)
         summary.write(node_hourly_output + '\n')
 
@@ -208,6 +210,34 @@ def user_friendly_time(hr):
     return user_friendly_hr
 
 
+def return_percentiles(list_of_numbers):
+    list_of_numbers_sorted = sorted(list_of_numbers)
+    p50 = percentile(list_of_numbers_sorted, 0.50)
+    p75 = percentile(list_of_numbers_sorted, 0.75)
+    return p50, p75
+
+def percentile(N, percent, key=lambda x:x):
+    """
+    Find the percentile of a list of values.
+
+    @parameter N - is a list of values. Note N MUST BE already sorted.
+    @parameter percent - a float value from 0.0 to 1.0.
+    @parameter key - optional key function to compute value from each element of N.
+
+    @return - the percentile of the values
+    """
+    if not N:
+        return None
+    k = (len(N)-1) * percent
+    f = math.floor(k)
+    c = math.ceil(k)
+    if f == c:
+        return key(N[int(k)])
+    d0 = key(N[int(f)]) * (c-k)
+    d1 = key(N[int(c)]) * (k-f)
+    return d0+d1
+
+
 def process_build_xml_file(build_xml_file_name):
     tree = ET.parse(build_xml_file_name)
     root = tree.getroot()
@@ -259,9 +289,8 @@ if __name__ == "__main__":
     else:
         run_date = sys.argv[2]
         jobs_output_data_folder = os.getcwd() + '/ci-metrics-python/'
-        jobs_output_data_folder_by_date = jobs_output_data_folder + run_date
-        if not os.path.exists(jobs_output_data_folder_by_date):
-            os.makedirs(jobs_output_data_folder_by_date)
+        if not os.path.exists(jobs_output_data_folder):
+            os.makedirs(jobs_output_data_folder)
         top_level_folder_path = sys.argv[1]
         run_date = sys.argv[2]
         all_runs_file = os.getcwd() + '/all-runs.txt'

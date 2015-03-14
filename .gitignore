@@ -3,4 +3,5 @@ jobs/
 ci-metrics-python/
 test*
 *.txt
+*.pyc
 tmp/
