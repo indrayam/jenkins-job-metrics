@@ -42,36 +42,43 @@ def process_build_xml_file_list(run_date, all_runs_file, jobs_output_data_folder
             job_key, job_name, job_date, job_time_hr, job_time_min = get_job_run_basics(build_xml_file_name)
             job_duration, job_builton, job_result = process_build_xml_file(build_xml_file_name)
             #print(job_key, job_name, job_date, job_time_hr, job_time_min, job_duration, job_builton, job_result)
+            
             total_num_of_jobs = total_num_of_jobs + 1
+            
+            # Nodes Dictionary of Dictionaries
             if job_builton not in nodes:
-                nodes[job_builton] = {
+                nodes[job_builton] = { 
+                'time': {
                     '00': 0, '01': 0, '02': 0, '03': 0, '04': 0, '05': 0, '06': 0, '07': 0, '08': 0, '09': 0, '10': 0, '11': 0, '12': 0,
                     '13': 0, '14': 0, '15': 0, '16': 0, '17': 0, '18': 0, '19': 0, '20': 0, '21': 0, '22': 0, '23': 0
+                    }, 
+                'status': {
+                    'Undef': 0, 'SUCCESS': 0, 'NOT_BUILT': 0, 'FAILURE': 0, 'UNSTABLE': 0, 'ABORTED': 0
+                    }, 
+                'duration': []
                 }
-            nodes[job_builton][job_time_hr] = nodes[job_builton][job_time_hr] + 1
+            nodes[job_builton]['time'][job_time_hr] = nodes[job_builton]['time'][job_time_hr] + 1
+            nodes[job_builton]['status'][job_result] = nodes[job_builton]['status'][job_result] + 1
+            nodes[job_builton]['duration'].append(int(job_duration))
             
+            # Job Runs Count Dictionary
             if job_key not in job_runs:
                 job_runs[job_key] = 1
             else:
                 job_runs[job_key] = job_runs[job_key] + 1
             
+            # Job Result Dictionary
             if job_result not in job_results:
                 job_results[job_result] = 1
             else:
                 job_results[job_result] = job_results[job_result] + 1
 
+            # Job Organization Dictionary
             job_org_key = job_key.split(':')[0]
             if job_org_key not in job_runs_by_org:
                 job_runs_by_org[job_org_key] = 1
             else:
-                job_runs_by_org[job_org_key] = job_runs_by_org[job_org_key] + 1         
-    
-    # Generate the node related metrics file for each node that ran a job on that day
-    # for node, node_times in nodes.items():
-    #     node_file = open(jobs_output_data_folder_by_date + '/' + node + '.txt', 'w')
-    #     for hr in sorted(node_times.keys()):
-    #         node_file.write(hr + ': ' + str(node_times[hr]) + '\n')
-    #     node_file.close()
+                job_runs_by_org[job_org_key] = job_runs_by_org[job_org_key] + 1
     
     # Generate summary report
     jobs_summary_report_filename = jobs_output_data_folder + run_date + '.txt'
@@ -130,23 +137,45 @@ def generate_ci_metrics_report(run_date, total_num_of_jobs, nodes, jobs_summary_
     nodes_sub_title = "Job Run Details, By Nodes:"
     print(nodes_sub_title)
     summary.write(nodes_sub_title + '\n')
-    for node, node_times in nodes.items():
+    for node, node_stats_type in nodes.items():
         node_total_count = 0
-        node_times_values = node_times.values()
+
+        node_times_values = node_stats_type['time'].values()
         node_max_count = max(node_times_values)
         node_min_count = min(node_times_values)
-        node_duration_p50, node_duration_p75 = return_percentiles(node_times_values)
-        node_hourly_output = '\t\tBy Time (PST): |'
-        for hr in sorted(node_times.keys()):
-            node_total_count = node_total_count + node_times[hr]
-            if node_times[hr] != 0:
-                node_hourly_output = node_hourly_output + red(str(node_times[hr])) + '|'
+        node_count_p50, node_count_p75 = return_percentiles(node_times_values)
+        node_hourly_output = '\t\tJob Run Timeline (PST): |'
+        for hr in sorted(node_stats_type['time'].keys()):
+            node_total_count = node_total_count + node_stats_type['time'][hr]
+            if node_stats_type['time'][hr] != 0:
+                node_hourly_output = node_hourly_output + red(str(node_stats_type['time'][hr])) + '|'
             else:
-                node_hourly_output = node_hourly_output + str(node_times[hr]) + '|'
-        print("\tJob Runs on Node \"" +  node + "\"\t = ", green(node_total_count))
-        summary.write("\tJob Runs on Node \"" +  node + "\"\t = " + red(node_total_count) + '\n')
-        print("\t\tNode Stats: Max Job Runs per Hr =", magenta(node_max_count) + ", Min Job Runs per Hr =", magenta(node_min_count) + ", 50th-percentile =", magenta(node_duration_p50) + ", 75th-percentile =", magenta(node_duration_p75))
-        summary.write("\t\tNode Stats: Max Job Runs per Hr = " + magenta(node_max_count) + ", Min Job Runs per Hr = " + magenta(node_min_count) + ", 50th-percentile = " + magenta(node_duration_p50) + ", 75th-percentile = " + magenta(node_duration_p75) + '\n')
+                node_hourly_output = node_hourly_output + str(node_stats_type['time'][hr]) + '|'
+        
+        node_status_output = '\t\tJob Run Count By Build Status: '
+        for st in node_stats_type['status'].keys():
+            node_status_output = node_status_output + st + ' = ' + magenta(node_stats_type['status'][st]) + ', '
+        node_status_output = node_status_output.strip(', ')
+
+        node_duration_values = node_stats_type['duration']
+        node_max_duration = user_friendly_secs(max(node_duration_values))
+        node_min_duration = user_friendly_secs(min(node_duration_values))
+        node_duration_p50, node_duration_p75 = return_percentiles(node_duration_values)
+        node_duration_p50 = user_friendly_secs(node_duration_p50)
+        node_duration_p75 = user_friendly_secs(node_duration_p75)
+
+        node_duration_output = '\t\tJob Run Duration Stats (in seconds): Max Duration = ' + magenta(node_max_duration) + ', Min Duration = ' + magenta(node_min_duration) + ', 50th-percentile = ' + magenta(node_duration_p50) + ", 75th-percentile =" + magenta(node_duration_p75)
+
+        print("\tTotal Job Runs on Node \"" +  node + "\" = ", green(node_total_count))
+        summary.write("\tTotal Job Runs on Node \"" +  node + "\" = " + red(node_total_count) + '\n')
+        
+        print("\t\tJob Run Count Stats: Max Job Runs per Hr =", magenta(node_max_count) + ", Min Job Runs per Hr =", magenta(node_min_count) + ", 50th-percentile =", magenta(node_count_p50) + ", 75th-percentile =", magenta(node_count_p75))
+        summary.write("\t\tJob Run Count Stats: Max Job Runs per Hr = " + magenta(node_max_count) + ", Min Job Runs per Hr = " + magenta(node_min_count) + ", 50th-percentile = " + magenta(node_count_p50) + ", 75th-percentile = " + magenta(node_count_p75) + '\n')
+        
+        print(node_status_output)
+        summary.write(node_status_output + '\n')
+        print(node_duration_output)
+        summary.write(node_duration_output + '\n')
         print(node_hourly_output)
         summary.write(node_hourly_output + '\n')
 
@@ -155,6 +184,10 @@ def generate_ci_metrics_report(run_date, total_num_of_jobs, nodes, jobs_summary_
     summary.write('*' * 150 + '\n')
     summary.close()
 
+def user_friendly_secs(ms):
+    seconds = ms / 1000.0
+    minutes = seconds / 60.0
+    return '%.2f' % minutes
 
 def user_friendly_time(hr):
     user_friendly_hr = ''
@@ -284,7 +317,7 @@ def get_job_key(line_tokens):
 
 if __name__ == "__main__":
     if len(sys.argv) < 3:
-        print('Usage: {} <top-level-jobs-folder> <date-in-the-format: (YYYY-MM-DD)>'.format(sys.argv[0]))
+        print('Usage: %s <top-level-jobs-folder> <date-in-the-format: (YYYY-MM-DD)>' % sys.argv[0])
         sys.exit(1)
     else:
         run_date = sys.argv[2]
