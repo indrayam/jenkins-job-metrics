@@ -43,6 +43,8 @@ def process_build_xml_file_list(run_date, all_runs_file, jobs_output_data_folder
         for line in file:
             build_xml_file_name = line.strip()
             job_key, job_name, job_date, job_time_hr, job_time_min = get_job_run_basics(build_xml_file_name)
+            if job_key == '_ERR_':
+                continue
             job_duration, job_builton, job_result = process_build_xml_file(build_xml_file_name)
             audit_log_file.write(job_key + '|' + job_date + '|' + job_time_hr + ':' + job_time_min + '|' + job_duration + '|' + job_builton + '|' + job_result + '\n')
             
@@ -175,11 +177,17 @@ def generate_ci_metrics_report(run_date, total_num_of_jobs, nodes, jobs_summary_
         node_status_output = node_status_output.strip(', ')
 
         node_duration_values = node_stats_type['duration']
-        node_max_duration = user_friendly_secs(max(node_duration_values))
-        node_min_duration = user_friendly_secs(min(node_duration_values))
-        node_duration_p50, node_duration_p75 = return_percentiles(node_duration_values)
-        node_duration_p50 = user_friendly_secs(node_duration_p50)
-        node_duration_p75 = user_friendly_secs(node_duration_p75)
+        if len(node_duration_values) > 0:
+            node_max_duration = user_friendly_secs(max(node_duration_values))
+            node_min_duration = user_friendly_secs(min(node_duration_values))
+            node_duration_p50, node_duration_p75 = return_percentiles(node_duration_values)
+            node_duration_p50 = user_friendly_secs(node_duration_p50)
+            node_duration_p75 = user_friendly_secs(node_duration_p75)
+        else:
+            node_max_duration = 'NA'
+            node_min_duration = 'NA'
+            node_duration_p50 = 'NA'
+            node_duration_p75 = 'NA'
 
         node_duration_output = '\t\tJob Run Duration Stats (in mins): Max Duration = ' + cyan(node_max_duration) + ', Min Duration = ' + cyan(node_min_duration) + ', 50th-percentile = ' + cyan(node_duration_p50) + ", 75th-percentile =" + cyan(node_duration_p75)
 
@@ -266,6 +274,7 @@ def return_percentiles(list_of_numbers):
     p75 = percentile(list_of_numbers_sorted, 0.75)
     return p50, p75
 
+
 def percentile(N, percent, key=lambda x:x):
     """
     Find the percentile of a list of values.
@@ -306,13 +315,16 @@ def process_build_xml_file(build_xml_file_name):
 
 def get_job_run_basics(job_run):
     line_tokens = job_run.split('/')
-    job_key = get_job_key(line_tokens[:-3])
-    job_name = line_tokens[-4]
-    job_date_tokens = line_tokens[-2].split('_')
-    job_date = job_date_tokens[0]
-    job_time_tokens = job_date_tokens[1].split('-')
-    job_time_hr = job_time_tokens[0]
-    job_time_min = job_time_tokens[1]
+    if line_tokens[-3] == 'builds':
+        job_key = get_job_key(line_tokens[:-3])
+        job_name = line_tokens[-4]
+        job_date_tokens = line_tokens[-2].split('_')
+        job_date = job_date_tokens[0]
+        job_time_tokens = job_date_tokens[1].split('-')
+        job_time_hr = job_time_tokens[0]
+        job_time_min = job_time_tokens[1]
+    else:
+        job_key, job_name, job_date, job_time_hr, job_time_min = '_ERR_', '_ERR', '_ERR', '_ERR', '_ERR_'
     return job_key, job_name, job_date, job_time_hr, job_time_min
 
 
