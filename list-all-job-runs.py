@@ -1,5 +1,6 @@
 from __future__ import print_function
 import datetime
+import time
 import math
 import shlex
 import sys
@@ -35,7 +36,9 @@ def process_build_xml_file_list(run_date, all_runs_file, jobs_output_data_folder
     
 
     # Process all build.xml files in all-runs.txt and set up dictionary of dictionaries data structure
-    audit_log_file = open(jobs_output_data_folder + run_date + '.log', 'w')
+    ts = time.time()
+    audit_timestamp = datetime.datetime.fromtimestamp(ts).strftime('%Y-%m-%d_%H-%M-%S')
+    audit_log_file = open(jobs_output_data_folder + '/audit/' + run_date + '_' + audit_timestamp + '-audit.log', 'w')
     with open(all_runs_file, 'r') as file:
         for line in file:
             build_xml_file_name = line.strip()
@@ -126,8 +129,12 @@ def generate_ci_metrics_report(run_date, total_num_of_jobs, nodes, jobs_summary_
     for job, job_run in sorted(job_runs.iteritems(), key=lambda (k,v): (v, k), reverse=True):
         job_count = job_count + 1
         if job_count < 6:
-            print("\t" + job, " = ", job_run)
-            summary.write("\t" + job + ' = ' + str(job_run) + '\n')
+            if job_count == 1:
+                print("\t" + job, " = ", green(job_run))
+                summary.write("\t" + job + ' = ' + green(job_run) + '\n')
+            else:
+                print("\t" + job, " = ", job_run)
+                summary.write("\t" + job + ' = ' + str(job_run) + '\n')               
 
     job_org_sub_title = "Top 5 Orgs, by Job Runs:"
     print(job_org_sub_title)
@@ -135,9 +142,14 @@ def generate_ci_metrics_report(run_date, total_num_of_jobs, nodes, jobs_summary_
     job_org_count = 0
     for job_org, job_org_run in sorted(job_runs_by_org.iteritems(), key=lambda (k,v): (v, k), reverse=True):
         job_org_count = job_org_count + 1
+        job_org
         if job_org_count < 6:
-            print("\t" + job_org, " = ", job_org_run)
-            summary.write("\t" + job_org + ' = ' + str(job_org_run) + '\n')
+            if job_org_count == 1:
+                print("\t" + job_org, " = ", green(job_org_run))
+                summary.write("\t" + job_org + ' = ' + green(job_org_run) + '\n')
+            else:
+                print("\t" + job_org, " = ", job_org_run)
+                summary.write("\t" + job_org + ' = ' + str(job_org_run) + '\n')                
 
     nodes_sub_title = "Job Run Details, By Nodes:"
     print(nodes_sub_title)
@@ -327,8 +339,9 @@ if __name__ == "__main__":
     else:
         run_date = sys.argv[2]
         jobs_output_data_folder = os.getcwd() + '/ci-metrics-python/'
-        if not os.path.exists(jobs_output_data_folder):
-            os.makedirs(jobs_output_data_folder)
+        jobs_output_data_folder_audit = jobs_output_data_folder + '/audit/'
+        if not os.path.exists(jobs_output_data_folder_audit):
+            os.makedirs(jobs_output_data_folder_audit)
         top_level_folder_path = sys.argv[1]
         run_date = sys.argv[2]
         all_runs_file = os.getcwd() + '/all-runs.txt'
