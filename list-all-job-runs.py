@@ -313,18 +313,46 @@ def get_job_key(line_tokens):
     return job_key
 
 
+def print_usage_and_exit():
+    usage = 'Usage: list-all-job-runs.py <top-level-jobs-folder> <start-date: (YYYY-MM-DD)> <end-date: (YYYY-MM-DD) | OPTIONAL>'
+    print(usage)
+    sys.exit(1)
+
+
 if __name__ == "__main__":
-    if len(sys.argv) < 3:
-        print('Usage: %s <top-level-jobs-folder> <date-in-the-format: (YYYY-MM-DD)>' % sys.argv[0])
-        sys.exit(1)
+    
+    if len(sys.argv) < 2:
+        print_usage_and_exit()
     else:
-        run_date = sys.argv[2]
+        # Create the folder for storing CI Metrics and Job Audit Log files
         jobs_output_data_folder = os.getcwd() + '/ci-metrics-python/'
         jobs_output_data_folder_audit = jobs_output_data_folder + '/audit/'
         if not os.path.exists(jobs_output_data_folder_audit):
             os.makedirs(jobs_output_data_folder_audit)
         top_level_folder_path = sys.argv[1]
-        run_date = sys.argv[2]
-        all_runs_file = os.getcwd() + '/all-runs.txt'
-        generate_build_xml_file_list(top_level_folder_path, all_runs_file, run_date)
-        process_build_xml_file_list(run_date, all_runs_file, jobs_output_data_folder)
+        
+        # Grab or Derive the Start Date
+        if len(sys.argv) > 2:
+            start_date = sys.argv[2]
+        else:
+            start_date = datetime.datetime.today().strftime('%Y-%m-%d')
+        start_date_obj = datetime.datetime.strptime(start_date, '%Y-%m-%d').date()
+
+        # Grab or Derive the End Date
+        if len(sys.argv) > 3:
+                end_date = sys.argv[3]
+        else:
+            end_date = start_date
+        end_date_obj = datetime.datetime.strptime(end_date, '%Y-%m-%d').date()
+
+        # Make sure the End Date is same or ahead of Start Date 
+        if end_date_obj >= start_date_obj:
+            delta = end_date_obj - start_date_obj
+            for d in range(delta.days + 1):
+                run_date_obj = start_date_obj + datetime.timedelta(days=d)
+                run_date = run_date_obj.strftime('%Y-%m-%d')
+                all_runs_file = os.getcwd() + '/all-runs.txt'
+                generate_build_xml_file_list(top_level_folder_path, all_runs_file, run_date)
+                process_build_xml_file_list(run_date, all_runs_file, jobs_output_data_folder)
+        else:
+            print_usage_and_exit()
