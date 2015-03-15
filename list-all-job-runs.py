@@ -10,6 +10,7 @@ from subprocess import Popen, PIPE
 import xml.etree.ElementTree as ET
 from color import red, green, yellow, blue, magenta, cyan, white
 
+
 def generate_build_xml_file_list(top_level_folder_path, all_runs_file, run_date):
 
     cmd = 'find ' + top_level_folder_path + ' -name build.xml'
@@ -25,6 +26,7 @@ def generate_build_xml_file_list(top_level_folder_path, all_runs_file, run_date)
         if rc > 0:
             print(err.decode('utf-8'), end='')
 
+
 def process_build_xml_file_list(run_date, all_runs_file, jobs_output_data_folder):
 
     # define variables to capture overall data
@@ -33,6 +35,10 @@ def process_build_xml_file_list(run_date, all_runs_file, jobs_output_data_folder
     job_runs_by_org = {}
     job_results = {}
     nodes = {}
+    total_num_of_jobs_by_hr = {
+                    '00': 0, '01': 0, '02': 0, '03': 0, '04': 0, '05': 0, '06': 0, '07': 0, '08': 0, '09': 0, '10': 0, '11': 0, '12': 0,
+                    '13': 0, '14': 0, '15': 0, '16': 0, '17': 0, '18': 0, '19': 0, '20': 0, '21': 0, '22': 0, '23': 0
+                    }
     
 
     # Process all build.xml files in all-runs.txt and set up dictionary of dictionaries data structure
@@ -44,8 +50,12 @@ def process_build_xml_file_list(run_date, all_runs_file, jobs_output_data_folder
             build_xml_file_name = line.strip()
             job_key, job_name, job_date, job_time_hr, job_time_min = get_job_run_basics(build_xml_file_name)
             if job_key == '_ERR_':
+                audit_log_file.write('_ERR_: File Path Parsing Error ' + build_xml_file_name + '\n')
                 continue
             job_duration, job_builton, job_result = process_build_xml_file(build_xml_file_name)
+            if job_duration == '_ERR_':
+                audit_log_file.write('_ERR_: File Does not Exist Error ' + build_xml_file_name + '\n')
+                continue
             audit_log_file.write(job_key + '|' + job_date + '|' + job_time_hr + ':' + job_time_min + '|' + job_duration + '|' + job_builton + '|' + job_result + '\n')
             
             # Create a total count of all the jobs
@@ -86,31 +96,39 @@ def process_build_xml_file_list(run_date, all_runs_file, jobs_output_data_folder
                 job_runs_by_org[job_org_key] = 1
             else:
                 job_runs_by_org[job_org_key] = job_runs_by_org[job_org_key] + 1
+
+            # Total Number of Jobs by Hr
+            total_num_of_jobs_by_hr[job_time_hr] = total_num_of_jobs_by_hr[job_time_hr] + 1
     
     # Close the Audit log file
     audit_log_file.close()
 
     # Generate summary report
     jobs_summary_report_filename = jobs_output_data_folder + run_date + '.txt'
-    generate_ci_metrics_report(run_date, total_num_of_jobs, nodes, jobs_summary_report_filename, job_runs, job_results, job_runs_by_org)
+    generate_ci_metrics_report(run_date, total_num_of_jobs, nodes, jobs_summary_report_filename, job_runs, job_results, job_runs_by_org, total_num_of_jobs_by_hr)
 
 
-def generate_ci_metrics_report(run_date, total_num_of_jobs, nodes, jobs_summary_report_filename, job_runs, job_results, job_runs_by_org):
+def generate_ci_metrics_report(run_date, total_num_of_jobs, nodes, jobs_summary_report_filename, job_runs, job_results, job_runs_by_org, total_num_of_jobs_by_hr):
     run_date_obj = datetime.datetime.strptime(run_date, '%Y-%m-%d').date()
     summary = open(jobs_summary_report_filename, 'w')
     print('*' * 150)
     summary.write('*' * 150 + '\n')
 
-    print("Date of CI Metrics Report Run:", yellow(run_date))
-    summary.write("Date of CI Metrics Report Run: " + yellow(run_date) + '\n')
+    fragment1 = "Date of CI Metrics Report Run: " + yellow(run_date)
+    print(fragment1)
+    summary.write(fragment1 + "\n")
 
-    print("Day of the week:", run_date_obj.strftime("%A"))
-    summary.write("Day of the week: " + run_date_obj.strftime("%A") + '\n')
+    fragment2 = "Day of the week: " + run_date_obj.strftime("%A")
+    print(fragment2)
+    summary.write(fragment2 + '\n')
 
-    print("Total Number of Job Runs:", green(total_num_of_jobs))
-    summary.write("Total Number of Job Runs: " + green(total_num_of_jobs) + '\n')
-    print("\tJob Run Status: ", end='')
-    summary.write("\t")
+    fragment3 = "Total Number of Job Runs:" + green(total_num_of_jobs)
+    print(fragment3)
+    summary.write(fragment3 + '\n')
+    
+    fragment4 = "\tJob Run Count By Build Status: "
+    print(fragment4, end='')
+    summary.write(fragment4)
     job_result_output = ''
     for job_result_type, job_result_frequency in job_results.items():
         if job_result_type == 'SUCCESS':
@@ -121,41 +139,56 @@ def generate_ci_metrics_report(run_date, total_num_of_jobs, nodes, jobs_summary_
     print(job_result_output)
     summary.write(job_result_output + '\n')
 
-    print("Total Number of Unique Jobs:", green(len(job_runs)))
-    summary.write("Total Number of Unique Jobs: " + green(len(job_runs)) + '\n')
+    fragment5 = "\tJob Run Timeline (PST): |"
+    print(fragment5, end='')
+    summary.write(fragment5)
+    overall_job_run_timeline_output = ''
+    for hr in sorted(total_num_of_jobs_by_hr.keys()):
+        if total_num_of_jobs_by_hr[hr] != 0:
+            overall_job_run_timeline_output = overall_job_run_timeline_output + red(str(total_num_of_jobs_by_hr[hr])) + '|'
+        else:
+            overall_job_run_timeline_output = overall_job_run_timeline_output + str(total_num_of_jobs_by_hr[hr]) + '|'
+    print(overall_job_run_timeline_output)
+    summary.write(overall_job_run_timeline_output + '\n')
+
+    fragment6 = "Total Number of Unique Jobs: " + green(len(job_runs))
+    print(fragment6)
+    summary.write(fragment6 + '\n')
  
-    job_sub_title = "Top 5 Jobs, by Job Runs:"
-    print(job_sub_title)
-    summary.write(job_sub_title + '\n')
+    fragment7 = "Top 5 Jobs, by Job Runs:"
+    print(fragment7)
+    summary.write(fragment7 + '\n')
+    top5_jobs_output = ''
     job_count = 0
     for job, job_run in sorted(job_runs.iteritems(), key=lambda (k,v): (v, k), reverse=True):
         job_count = job_count + 1
         if job_count < 6:
             if job_count == 1:
-                print("\t" + job, " = ", green(job_run))
-                summary.write("\t" + job + ' = ' + green(job_run) + '\n')
+                top5_jobs_output = top5_jobs_output + "\t" + job + " = " + green(job_run) + "\n"
             else:
-                print("\t" + job, " = ", job_run)
-                summary.write("\t" + job + ' = ' + str(job_run) + '\n')               
+                top5_jobs_output = top5_jobs_output + "\t" + job + " = " + str(job_run) + "\n"
+    print(top5_jobs_output, end='')
+    summary.write(top5_jobs_output)
 
-    job_org_sub_title = "Top 5 Orgs, by Job Runs:"
-    print(job_org_sub_title)
-    summary.write(job_org_sub_title + '\n')
+    fragment8 = "Top 5 Orgs, by Job Runs:"
+    print(fragment8)
+    summary.write(fragment8 + '\n')
     job_org_count = 0
+    top5_orgs_output = ''
     for job_org, job_org_run in sorted(job_runs_by_org.iteritems(), key=lambda (k,v): (v, k), reverse=True):
         job_org_count = job_org_count + 1
         job_org
         if job_org_count < 6:
             if job_org_count == 1:
-                print("\t" + job_org, " = ", green(job_org_run))
-                summary.write("\t" + job_org + ' = ' + green(job_org_run) + '\n')
+                top5_orgs_output = top5_orgs_output + "\t" + job_org + " = " + green(job_org_run) + "\n"
             else:
-                print("\t" + job_org, " = ", job_org_run)
-                summary.write("\t" + job_org + ' = ' + str(job_org_run) + '\n')                
+                top5_orgs_output = top5_orgs_output + "\t" + job_org + " = " + str(job_org_run) + "\n"
+    print(top5_orgs_output, end='')
+    summary.write(top5_orgs_output)
 
-    nodes_sub_title = "Job Run Details, By Nodes:"
-    print(nodes_sub_title)
-    summary.write(nodes_sub_title + '\n')
+    fragment9 = "Job Run Details, By Nodes:"
+    print(fragment9)
+    summary.write(fragment9+ '\n')
     for node, node_stats_type in nodes.items():
         node_total_count = 0
 
@@ -171,11 +204,23 @@ def generate_ci_metrics_report(run_date, total_num_of_jobs, nodes, jobs_summary_
             else:
                 node_hourly_output = node_hourly_output + str(node_stats_type['time'][hr]) + '|'
         
+        # Job Run Count Output By Node
+        fragment10 = "\tTotal Job Runs on Node \"" +  node + "\" = " + green(node_total_count)
+        print(fragment10)
+        summary.write(fragment10 + '\n')
+        node_count_stats_output = "\t\tJob Run Count Stats: Max Job Runs per Hr = " + magenta(node_max_count) + ", Min Job Runs per Hr = " + magenta(node_min_count) + ", 50th-percentile = " + magenta(node_count_p50) + ", 75th-percentile = " + magenta(node_count_p75)
+        print(node_count_stats_output)
+        summary.write(node_count_stats_output + '\n')
+        
+        # Build Status Count Output By Node
         node_status_output = '\t\tJob Run Count By Build Status: '
         for st in node_stats_type['status'].keys():
             node_status_output = node_status_output + st + ' = ' + blue(node_stats_type['status'][st]) + ', '
         node_status_output = node_status_output.strip(', ')
+        print(node_status_output)
+        summary.write(node_status_output + '\n')
 
+        # Duration Stats Output By Node
         node_duration_values = node_stats_type['duration']
         if len(node_duration_values) > 0:
             node_max_duration = user_friendly_secs(max(node_duration_values))
@@ -188,19 +233,11 @@ def generate_ci_metrics_report(run_date, total_num_of_jobs, nodes, jobs_summary_
             node_min_duration = 'NA'
             node_duration_p50 = 'NA'
             node_duration_p75 = 'NA'
-
         node_duration_output = '\t\tJob Run Duration Stats (in mins): Max Duration = ' + cyan(node_max_duration) + ', Min Duration = ' + cyan(node_min_duration) + ', 50th-percentile = ' + cyan(node_duration_p50) + ", 75th-percentile =" + cyan(node_duration_p75)
-
-        print("\tTotal Job Runs on Node \"" +  node + "\" = ", green(node_total_count))
-        summary.write("\tTotal Job Runs on Node \"" +  node + "\" = " + green(node_total_count) + '\n')
-        
-        print("\t\tJob Run Count Stats: Max Job Runs per Hr =", magenta(node_max_count) + ", Min Job Runs per Hr =", magenta(node_min_count) + ", 50th-percentile =", magenta(node_count_p50) + ", 75th-percentile =", magenta(node_count_p75))
-        summary.write("\t\tJob Run Count Stats: Max Job Runs per Hr = " + magenta(node_max_count) + ", Min Job Runs per Hr = " + magenta(node_min_count) + ", 50th-percentile = " + magenta(node_count_p50) + ", 75th-percentile = " + magenta(node_count_p75) + '\n')
-        
-        print(node_status_output)
-        summary.write(node_status_output + '\n')
         print(node_duration_output)
         summary.write(node_duration_output + '\n')
+        
+        # Timeline Output By Node
         print(node_hourly_output)
         summary.write(node_hourly_output + '\n')
 
@@ -209,63 +246,11 @@ def generate_ci_metrics_report(run_date, total_num_of_jobs, nodes, jobs_summary_
     summary.write('*' * 150 + '\n')
     summary.close()
 
+
 def user_friendly_secs(ms):
     seconds = ms / 1000.0
     minutes = seconds / 60.0
     return '%.2f' % minutes
-
-def user_friendly_time(hr):
-    user_friendly_hr = ''
-    if hr == '00':
-        user_friendly_hr = '12 to 1 AM'
-    elif hr == '01':
-        user_friendly_hr = '1 to 2 AM'
-    elif hr == '02':
-        user_friendly_hr = '2 to 3 AM'
-    elif hr == '03':
-        user_friendly_hr = '3 to 4 AM'
-    elif hr == '04':
-        user_friendly_hr = '4 to 5 AM'
-    elif hr == '05':
-        user_friendly_hr = '5 to 6 AM'
-    elif hr == '06':
-        user_friendly_hr = '6 to 7 AM'
-    elif hr == '07':
-        user_friendly_hr = '7 to 8 AM'
-    elif hr == '08':
-        user_friendly_hr = '8 to 9 AM'
-    elif hr == '09':
-        user_friendly_hr = '9 to 10 AM'
-    elif hr == '10':
-        user_friendly_hr = '10 to 11 AM'
-    elif hr == '11':
-        user_friendly_hr = '11 to 12 PM'
-    elif hr == '12':
-        user_friendly_hr = '12 to 1 PM'
-    elif hr == '13':
-        user_friendly_hr = '1 to 2 PM'
-    elif hr == '14':
-        user_friendly_hr = '2 to 3 PM'
-    elif hr == '15':
-        user_friendly_hr = '3 to 4 PM'
-    elif hr == '16':
-        user_friendly_hr = '4 to 5 PM'
-    elif hr == '17':
-        user_friendly_hr = '5 to 6 PM'
-    elif hr == '18':
-        user_friendly_hr = '6 to 7 PM'
-    elif hr == '19':
-        user_friendly_hr = '7 to 8 PM'
-    elif hr == '20':
-        user_friendly_hr = '8 to 9 PM'
-    elif hr == '21':
-        user_friendly_hr = '9 to 10 PM'
-    elif hr == '22':
-        user_friendly_hr = '10 to 11 PM'
-    elif hr == '23':
-        user_friendly_hr = '11 to 12 AM'
-
-    return user_friendly_hr
 
 
 def return_percentiles(list_of_numbers):
@@ -298,22 +283,22 @@ def percentile(N, percent, key=lambda x:x):
 
 
 def process_build_xml_file(build_xml_file_name):
-    tree = ET.parse(build_xml_file_name)
-    root = tree.getroot()
-    job_duration = 'Undef'
-    job_builton = 'Undef'
-    job_result = 'Undef'
-    for child in root:
-        if child.tag == 'duration':
-            job_duration = child.text
-        elif child.tag == 'builtOn':
-            job_builton = child.text
-        elif child.tag == 'result':
-            job_result = child.text
+    job_duration, job_builton, job_result = '_ERR_', '_ERR_', '_ERR_'
+    if os.path.isfile(build_xml_file_name):
+        tree = ET.parse(build_xml_file_name)
+        root = tree.getroot()
+        for child in root:
+            if child.tag == 'duration':
+                job_duration = child.text
+            elif child.tag == 'builtOn':
+                job_builton = child.text
+            elif child.tag == 'result':
+                job_result = child.text
     return job_duration, job_builton, job_result
 
 
 def get_job_run_basics(job_run):
+    job_key, job_name, job_date, job_time_hr, job_time_min = '_ERR_', '_ERR', '_ERR', '_ERR', '_ERR_'
     line_tokens = job_run.split('/')
     if line_tokens[-3] == 'builds':
         job_key = get_job_key(line_tokens[:-3])
@@ -323,8 +308,6 @@ def get_job_run_basics(job_run):
         job_time_tokens = job_date_tokens[1].split('-')
         job_time_hr = job_time_tokens[0]
         job_time_min = job_time_tokens[1]
-    else:
-        job_key, job_name, job_date, job_time_hr, job_time_min = '_ERR_', '_ERR', '_ERR', '_ERR', '_ERR_'
     return job_key, job_name, job_date, job_time_hr, job_time_min
 
 
