@@ -279,7 +279,6 @@ def send_ci_report_in_email(run_date, ci_metrics_report):
     # email_user = "anand.sharma@gmail.com"
     email_user = "anasharm@cisco.com"
     # email_pwd = ""
-    email_pwd = "Fam1lyR0cks!"
     FROM = "anasharm@cisco.com"
     # FROM = "anand.sharma@gmail.com"
     TO = ["shsmith@cisco.com", "anasharm@cisco.com", "anand.sharma@gmail.com"]
