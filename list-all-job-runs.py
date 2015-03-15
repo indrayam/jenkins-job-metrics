@@ -178,7 +178,7 @@ def generate_ci_metrics_report(run_date, total_num_of_jobs, nodes, jobs_summary_
                 top5_orgs_output = top5_orgs_output + "\t" + job_org + " = " + green(job_org_run) + "\n"
             else:
                 top5_orgs_output = top5_orgs_output + "\t" + job_org + " = " + str(job_org_run) + "\n"
-        ptop5_orgs_output = ptop5_orgs_output + "\t" + job_org + " = " + str(job_org_run) + "\n"
+            ptop5_orgs_output = ptop5_orgs_output + "\t" + job_org + " = " + str(job_org_run) + "\n"
     ci_metrics_report = ci_metrics_report + top5_orgs_output
     ci_metrics_report_plain = ci_metrics_report_plain + ptop5_orgs_output
 
@@ -195,7 +195,7 @@ def generate_ci_metrics_report(run_date, total_num_of_jobs, nodes, jobs_summary_
                 top5_jobs_output = top5_jobs_output + "\t" + job + " = " + green(job_run) + "\n"
             else:
                 top5_jobs_output = top5_jobs_output + "\t" + job + " = " + str(job_run) + "\n"
-        ptop5_jobs_output = ptop5_jobs_output + "\t" + job + " = " + str(job_run) + "\n"
+            ptop5_jobs_output = ptop5_jobs_output + "\t" + job + " = " + str(job_run) + "\n"
     ci_metrics_report = ci_metrics_report + top5_jobs_output
     ci_metrics_report_plain = ci_metrics_report_plain + ptop5_jobs_output
 
