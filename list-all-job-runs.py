@@ -267,7 +267,7 @@ def percentile(N, percent, key=lambda x:x):
 
 
 def process_build_xml_file(build_xml_file_name):
-    process_build_status = "_ERR_"
+    job_duration, job_builton, job_result, process_build_status = "Undef", "Undef", "Undef", "_ERR_"
     if os.path.isfile(build_xml_file_name):
         process_build_status = "SUCCESS"
         tree = ET.parse(build_xml_file_name)
@@ -283,7 +283,7 @@ def process_build_xml_file(build_xml_file_name):
 
 
 def get_job_run_basics(job_run):
-    job_run_basics_status = "_ERR_"
+    job_key, job_name, job_date, job_time_hr, job_time_min, job_run_basics_status = "Undef", "Undef", "Undef", "Undef", "Undef", "_ERR_"
     line_tokens = job_run.split('/')
     if line_tokens[-3] == 'builds':
         job_run_basics_status = "SUCCESS"
