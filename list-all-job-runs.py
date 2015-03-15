@@ -111,68 +111,44 @@ def process_build_xml_file_list(run_date, all_runs_file, jobs_output_data_folder
 def generate_ci_metrics_report(run_date, total_num_of_jobs, nodes, jobs_summary_report_filename, job_runs, job_results, job_runs_by_org, total_num_of_jobs_by_hr):
     run_date_obj = datetime.datetime.strptime(run_date, '%Y-%m-%d').date()
     summary = open(jobs_summary_report_filename, 'w')
-    print('*' * 150)
-    summary.write('*' * 150 + '\n')
 
-    fragment1 = "Date of CI Metrics Report Run: " + yellow(run_date)
-    print(fragment1)
-    summary.write(fragment1 + "\n")
+    ci_metrics_report = '*' * 150 + "\n"
 
-    fragment2 = "Day of the week: " + run_date_obj.strftime("%A")
-    print(fragment2)
-    summary.write(fragment2 + '\n')
+    fragment1 = "Date of CI Metrics Report Run: " + yellow(run_date) + "\n"
+    ci_metrics_report = ci_metrics_report + fragment1
 
-    fragment3 = "Total Number of Job Runs:" + green(total_num_of_jobs)
-    print(fragment3)
-    summary.write(fragment3 + '\n')
+    fragment2 = "Day of the week: " + run_date_obj.strftime("%A") + "\n"
+    ci_metrics_report = ci_metrics_report + fragment2
+
+    fragment3 = "Total Number of Job Runs: " + green(total_num_of_jobs) + "\n"
+    ci_metrics_report = ci_metrics_report + fragment3
     
     fragment4 = "\tJob Run Count By Build Status: "
-    print(fragment4, end='')
-    summary.write(fragment4)
+    ci_metrics_report = ci_metrics_report + fragment4
     job_result_output = ''
     for job_result_type, job_result_frequency in job_results.items():
         if job_result_type == 'SUCCESS':
             job_result_output = job_result_output + job_result_type + ' = ' + green(job_result_frequency) + ', '
         else:
             job_result_output = job_result_output + job_result_type + ' = ' + red(job_result_frequency) + ', '
-    job_result_output = job_result_output.strip(', ')
-    print(job_result_output)
-    summary.write(job_result_output + '\n')
+    job_result_output = job_result_output.strip(', ') + "\n"
+    ci_metrics_report = ci_metrics_report + job_result_output
 
     fragment5 = "\tJob Run Timeline (PST): |"
-    print(fragment5, end='')
-    summary.write(fragment5)
+    ci_metrics_report = ci_metrics_report + fragment5
     overall_job_run_timeline_output = ''
     for hr in sorted(total_num_of_jobs_by_hr.keys()):
         if total_num_of_jobs_by_hr[hr] != 0:
             overall_job_run_timeline_output = overall_job_run_timeline_output + red(str(total_num_of_jobs_by_hr[hr])) + '|'
         else:
             overall_job_run_timeline_output = overall_job_run_timeline_output + str(total_num_of_jobs_by_hr[hr]) + '|'
-    print(overall_job_run_timeline_output)
-    summary.write(overall_job_run_timeline_output + '\n')
+    ci_metrics_report = ci_metrics_report + overall_job_run_timeline_output + "\n"
 
-    fragment6 = "Total Number of Unique Jobs: " + green(len(job_runs))
-    print(fragment6)
-    summary.write(fragment6 + '\n')
+    fragment6 = "Total Number of Unique Jobs: " + green(len(job_runs)) + "\n"
+    ci_metrics_report = ci_metrics_report + fragment6
  
-    fragment7 = "Top 5 Jobs, by Job Runs:"
-    print(fragment7)
-    summary.write(fragment7 + '\n')
-    top5_jobs_output = ''
-    job_count = 0
-    for job, job_run in sorted(job_runs.iteritems(), key=lambda (k,v): (v, k), reverse=True):
-        job_count = job_count + 1
-        if job_count < 6:
-            if job_count == 1:
-                top5_jobs_output = top5_jobs_output + "\t" + job + " = " + green(job_run) + "\n"
-            else:
-                top5_jobs_output = top5_jobs_output + "\t" + job + " = " + str(job_run) + "\n"
-    print(top5_jobs_output, end='')
-    summary.write(top5_jobs_output)
-
-    fragment8 = "Top 5 Orgs, by Job Runs:"
-    print(fragment8)
-    summary.write(fragment8 + '\n')
+    fragment7 = "Top 5 Orgs, by Job Runs:" + "\n"
+    ci_metrics_report = ci_metrics_report + fragment7
     job_org_count = 0
     top5_orgs_output = ''
     for job_org, job_org_run in sorted(job_runs_by_org.iteritems(), key=lambda (k,v): (v, k), reverse=True):
@@ -183,12 +159,23 @@ def generate_ci_metrics_report(run_date, total_num_of_jobs, nodes, jobs_summary_
                 top5_orgs_output = top5_orgs_output + "\t" + job_org + " = " + green(job_org_run) + "\n"
             else:
                 top5_orgs_output = top5_orgs_output + "\t" + job_org + " = " + str(job_org_run) + "\n"
-    print(top5_orgs_output, end='')
-    summary.write(top5_orgs_output)
+    ci_metrics_report = ci_metrics_report + top5_orgs_output
 
-    fragment9 = "Job Run Details, By Nodes:"
-    print(fragment9)
-    summary.write(fragment9+ '\n')
+    fragment8 = "Top 5 Jobs, by Job Runs:" + "\n"
+    ci_metrics_report = ci_metrics_report + fragment8
+    top5_jobs_output = ''
+    job_count = 0
+    for job, job_run in sorted(job_runs.iteritems(), key=lambda (k,v): (v, k), reverse=True):
+        job_count = job_count + 1
+        if job_count < 6:
+            if job_count == 1:
+                top5_jobs_output = top5_jobs_output + "\t" + job + " = " + green(job_run) + "\n"
+            else:
+                top5_jobs_output = top5_jobs_output + "\t" + job + " = " + str(job_run) + "\n"
+    ci_metrics_report = ci_metrics_report + top5_jobs_output
+
+    fragment9 = "Job Run Details, By Nodes:" + "\n"
+    ci_metrics_report = ci_metrics_report + fragment9
     for node, node_stats_type in nodes.items():
         node_total_count = 0
 
@@ -203,22 +190,20 @@ def generate_ci_metrics_report(run_date, total_num_of_jobs, nodes, jobs_summary_
                 node_hourly_output = node_hourly_output + red(str(node_stats_type['time'][hr])) + '|'
             else:
                 node_hourly_output = node_hourly_output + str(node_stats_type['time'][hr]) + '|'
-        
+        node_hourly_output = node_hourly_output + "\n"
+
         # Job Run Count Output By Node
-        fragment10 = "\tTotal Job Runs on Node \"" +  node + "\" = " + green(node_total_count)
-        print(fragment10)
-        summary.write(fragment10 + '\n')
-        node_count_stats_output = "\t\tJob Run Count Stats: Max Job Runs per Hr = " + magenta(node_max_count) + ", Min Job Runs per Hr = " + magenta(node_min_count) + ", 50th-percentile = " + magenta(node_count_p50) + ", 75th-percentile = " + magenta(node_count_p75)
-        print(node_count_stats_output)
-        summary.write(node_count_stats_output + '\n')
+        fragment10 = "\tTotal Job Runs on Node \"" +  node + "\" = " + green(node_total_count) + "\n"
+        ci_metrics_report = ci_metrics_report + fragment10
+        node_count_stats_output = "\t\tJob Run Count Stats: Max Job Runs per Hr = " + magenta(node_max_count) + ", Min Job Runs per Hr = " + magenta(node_min_count) + ", 50th-percentile = " + magenta(node_count_p50) + ", 75th-percentile = " + magenta(node_count_p75) + "\n"
+        ci_metrics_report = ci_metrics_report + node_count_stats_output
         
         # Build Status Count Output By Node
         node_status_output = '\t\tJob Run Count By Build Status: '
         for st in node_stats_type['status'].keys():
             node_status_output = node_status_output + st + ' = ' + blue(node_stats_type['status'][st]) + ', '
-        node_status_output = node_status_output.strip(', ')
-        print(node_status_output)
-        summary.write(node_status_output + '\n')
+        node_status_output = node_status_output.strip(', ') + "\n"
+        ci_metrics_report = ci_metrics_report + node_status_output
 
         # Duration Stats Output By Node
         node_duration_values = node_stats_type['duration']
@@ -233,17 +218,16 @@ def generate_ci_metrics_report(run_date, total_num_of_jobs, nodes, jobs_summary_
             node_min_duration = 'NA'
             node_duration_p50 = 'NA'
             node_duration_p75 = 'NA'
-        node_duration_output = '\t\tJob Run Duration Stats (in mins): Max Duration = ' + cyan(node_max_duration) + ', Min Duration = ' + cyan(node_min_duration) + ', 50th-percentile = ' + cyan(node_duration_p50) + ", 75th-percentile =" + cyan(node_duration_p75)
-        print(node_duration_output)
-        summary.write(node_duration_output + '\n')
+        node_duration_output = '\t\tJob Run Duration Stats (in mins): Max Duration = ' + cyan(node_max_duration) + ', Min Duration = ' + cyan(node_min_duration) + ', 50th-percentile = ' + cyan(node_duration_p50) + ", 75th-percentile =" + cyan(node_duration_p75) + "\n"
+        ci_metrics_report = ci_metrics_report + node_duration_output
         
         # Timeline Output By Node
-        print(node_hourly_output)
-        summary.write(node_hourly_output + '\n')
+        ci_metrics_report = ci_metrics_report + node_hourly_output
 
 
-    print('*' * 150)
-    summary.write('*' * 150 + '\n')
+    ci_metrics_report = ci_metrics_report + '*' * 150 + "\n"
+    print(ci_metrics_report,end='')
+    summary.write(ci_metrics_report)
     summary.close()
 
 
