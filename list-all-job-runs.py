@@ -281,7 +281,7 @@ def send_ci_report_in_email(run_date, ci_metrics_report):
     # email_pwd = ""
     FROM = "anasharm@cisco.com"
     # FROM = "anand.sharma@gmail.com"
-    TO = ["shsmith@cisco.com", "anasharm@cisco.com", "anand.sharma@gmail.com"]
+    TO = ["anasharm@cisco.com", "sujmuthu@cisco.com", "vivekse@cisco.com", "plashkar@cisco.com"]
     SUBJECT = "CI Job Run Summary Report for " + run_date
     TEXT = ci_metrics_report
 
