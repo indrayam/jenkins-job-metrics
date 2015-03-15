@@ -6,6 +6,7 @@ import shlex
 import sys
 import os
 import glob
+import smtplib
 from subprocess import Popen, PIPE
 import xml.etree.ElementTree as ET
 from color import red, green, yellow, blue, magenta, cyan, white
@@ -230,6 +231,35 @@ def generate_ci_metrics_report(run_date, total_num_of_jobs, nodes, jobs_summary_
     summary.write(ci_metrics_report)
     summary.close()
 
+    # Send the CI Metrics Report as Email
+    # send_ci_report_in_email(run_date, ci_metrics_report)
+
+
+def send_ci_report_in_email(run_date, ci_metrics_report):
+    # email_user = "anand.sharma@gmail.com"
+    email_user = "anasharm@cisco.com"
+    # email_pwd = ""
+    email_pwd = ""
+    FROM = "anasharm@cisco.com"
+    TO = ["anand.sharma@gmail.com", "anasharm@cisco.com"]
+    SUBJECT = "CI Job Run Summary Report for " + run_date
+    TEXT = ci_metrics_report
+
+    # Prepare actual message
+    message = """\From: %s\nTo: %s\nSubject: %s\n\n%s
+    """ % (FROM, ", ".join(TO), SUBJECT, TEXT)
+    try:
+        # server = smtplib.SMTP("smtp.gmail.com", 587) 
+        server = smtplib.SMTP("email.cisco.com", 587) 
+        server.ehlo()
+        server.starttls()
+        server.login(email_user, email_pwd)
+        server.sendmail(FROM, TO, message)
+        #server.quit()
+        server.close()
+        print("Successfully sent email with Subject:", SUBJECT)
+    except:
+        print("WARNING: Failed to send email with Subject:", SUBJECT)
 
 def user_friendly_secs(ms):
     seconds = ms / 1000.0
