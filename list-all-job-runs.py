@@ -48,12 +48,12 @@ def process_build_xml_file_list(run_date, all_runs_file, jobs_output_data_folder
     with open(all_runs_file, 'r') as file:
         for line in file:
             build_xml_file_name = line.strip()
-            job_key, job_name, job_date, job_time_hr, job_time_min = get_job_run_basics(build_xml_file_name)
-            if job_key == '_ERR_':
+            job_key, job_name, job_date, job_time_hr, job_time_min, job_run_basics_status = get_job_run_basics(build_xml_file_name)
+            if job_run_basics_status == '_ERR_':
                 audit_log_file.write('_ERR_: File Path Parsing Error ' + build_xml_file_name + '\n')
                 continue
-            job_duration, job_builton, job_result = process_build_xml_file(build_xml_file_name)
-            if job_duration == '_ERR_':
+            job_duration, job_builton, job_result, process_build_status = process_build_xml_file(build_xml_file_name)
+            if process_build_status == '_ERR_':
                 audit_log_file.write('_ERR_: File Does not Exist Error ' + build_xml_file_name + '\n')
                 continue
             audit_log_file.write(job_key + '|' + job_date + '|' + job_time_hr + ':' + job_time_min + '|' + job_duration + '|' + job_builton + '|' + job_result + '\n')
@@ -267,8 +267,9 @@ def percentile(N, percent, key=lambda x:x):
 
 
 def process_build_xml_file(build_xml_file_name):
-    job_duration, job_builton, job_result = '_ERR_', '_ERR_', '_ERR_'
+    process_build_status = "_ERR_"
     if os.path.isfile(build_xml_file_name):
+        process_build_status = "SUCCESS"
         tree = ET.parse(build_xml_file_name)
         root = tree.getroot()
         for child in root:
@@ -278,13 +279,14 @@ def process_build_xml_file(build_xml_file_name):
                 job_builton = child.text
             elif child.tag == 'result':
                 job_result = child.text
-    return job_duration, job_builton, job_result
+    return job_duration, job_builton, job_result, process_build_status
 
 
 def get_job_run_basics(job_run):
-    job_key, job_name, job_date, job_time_hr, job_time_min = '_ERR_', '_ERR', '_ERR', '_ERR', '_ERR_'
+    job_run_basics_status = "_ERR_"
     line_tokens = job_run.split('/')
     if line_tokens[-3] == 'builds':
+        job_run_basics_status = "SUCCESS"
         job_key = get_job_key(line_tokens[:-3])
         job_name = line_tokens[-4]
         job_date_tokens = line_tokens[-2].split('_')
@@ -292,7 +294,7 @@ def get_job_run_basics(job_run):
         job_time_tokens = job_date_tokens[1].split('-')
         job_time_hr = job_time_tokens[0]
         job_time_min = job_time_tokens[1]
-    return job_key, job_name, job_date, job_time_hr, job_time_min
+    return job_key, job_name, job_date, job_time_hr, job_time_min, job_run_basics_status
 
 
 def get_job_key(line_tokens):
