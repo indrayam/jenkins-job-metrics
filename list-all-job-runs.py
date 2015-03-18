@@ -53,11 +53,12 @@ def process_build_xml_file_list(run_date, all_runs_file, jobs_output_data_folder
             if job_run_basics_status == '_ERR_':
                 audit_log_file.write('_ERR_: File Path Parsing Error ' + build_xml_file_name + '\n')
                 continue
-            job_duration, job_builton, job_result, process_build_status = process_build_xml_file(build_xml_file_name)
+            job_number, job_duration, job_builton, job_result, process_build_status = process_build_xml_file(build_xml_file_name)
             if process_build_status == '_ERR_':
                 audit_log_file.write('_ERR_: File Does not Exist Error ' + build_xml_file_name + '\n')
                 continue
-            audit_log_file.write(job_key + '|' + job_date + '|' + job_time_hr + ':' + job_time_min + '|' + job_duration + '|' + job_builton + '|' + job_result + '\n')
+            job_url = get_job_url(job_key, job_number)
+            audit_log_file.write(job_key + '|' + job_number + '|' + job_date + '|' + job_time_hr + ':' + job_time_min + '|' + job_duration + '|' + job_builton + '|' + job_result + '|' + job_url + '\n')
             
             # Create a total count of all the jobs
             total_num_of_jobs = total_num_of_jobs + 1
@@ -72,12 +73,12 @@ def process_build_xml_file_list(run_date, all_runs_file, jobs_output_data_folder
                 'status': {
                     'Undef': 0, 'SUCCESS': 0, 'NOT_BUILT': 0, 'FAILURE': 0, 'UNSTABLE': 0, 'ABORTED': 0
                     }, 
-                'duration': []
+                'duration': {}
                 }
             nodes[job_builton]['time'][job_time_hr] = nodes[job_builton]['time'][job_time_hr] + 1
             nodes[job_builton]['status'][job_result] = nodes[job_builton]['status'][job_result] + 1
             if job_result == 'SUCCESS': 
-                nodes[job_builton]['duration'].append(int(job_duration))
+                nodes[job_builton]['duration'][job_url] = int(job_duration)
             
             # Job Runs Count Dictionary
             if job_key not in job_runs:
@@ -208,7 +209,7 @@ def generate_ci_metrics_report(run_date, total_num_of_jobs, nodes, jobs_summary_
         node_times_values = node_stats_type['time'].values()
         node_max_count = max(node_times_values)
         node_min_count = min(node_times_values)
-        node_count_p50, node_count_p75 = return_percentiles(node_times_values)
+        node_count_p50, node_count_p75 = get_percentiles(node_times_values)
         node_hourly_output = '\t\tJob Run Timeline (PST): |'
         pnode_hourly_output = '\t\tJob Run Timeline (PST): |'
         for hr in sorted(node_stats_type['time'].keys()):
@@ -243,11 +244,13 @@ def generate_ci_metrics_report(run_date, total_num_of_jobs, nodes, jobs_summary_
         ci_metrics_report_plain = ci_metrics_report_plain + pnode_status_output
 
         # Duration Stats Output By Node
-        node_duration_values = node_stats_type['duration']
+        node_duration_values = list(node_stats_type['duration'].values())
         if len(node_duration_values) > 0:
-            node_max_duration = user_friendly_secs(max(node_duration_values))
+            node_max_duration_msec = max(node_duration_values)
+            node_max_duration = user_friendly_secs(node_max_duration_msec)
+            node_max_duration_url = get_job_url_by_duration(node_stats_type['duration'], node_max_duration_msec)
             node_min_duration = user_friendly_secs(min(node_duration_values))
-            node_duration_p50, node_duration_p75 = return_percentiles(node_duration_values)
+            node_duration_p50, node_duration_p75 = get_percentiles(node_duration_values)
             node_duration_p50 = user_friendly_secs(node_duration_p50)
             node_duration_p75 = user_friendly_secs(node_duration_p75)
         else:
@@ -255,8 +258,10 @@ def generate_ci_metrics_report(run_date, total_num_of_jobs, nodes, jobs_summary_
             node_min_duration = 'NA'
             node_duration_p50 = 'NA'
             node_duration_p75 = 'NA'
-        node_duration_output = '\t\tJob Run Duration Stats (in mins): Max Duration = ' + cyan(node_max_duration) + ', Min Duration = ' + cyan(node_min_duration) + ', 50th-percentile = ' + cyan(node_duration_p50) + ", 75th-percentile =" + cyan(node_duration_p75) + "\n"
-        pnode_duration_output = '\t\tJob Run Duration Stats (in mins): Max Duration = ' + str(node_max_duration) + ', Min Duration = ' + str(node_min_duration) + ', 50th-percentile = ' + str(node_duration_p50) + ", 75th-percentile =" + str(node_duration_p75) + "\n"
+        node_duration_output = '\t\tJob Run Duration Stats (in mins): Max Duration = ' + cyan(node_max_duration) + ', Min Duration = ' + cyan(node_min_duration) + ', 50th-percentile = ' + cyan(node_duration_p50) + ', 75th-percentile =' + cyan(node_duration_p75) + '\n'
+        node_duration_output = node_duration_output + '\t\tConsole Output URL of Job with Max Duration (' + node_max_duration + ' mins): ' + node_max_duration_url + '/console' + '\n'
+        pnode_duration_output = '\t\tJob Run Duration Stats (in mins): Max Duration = ' + str(node_max_duration) + ', Min Duration = ' + str(node_min_duration) + ', 50th-percentile = ' + str(node_duration_p50) + ', 75th-percentile =' + str(node_duration_p75) + '\n'
+        pnode_duration_output = pnode_duration_output + '\t\tConsole Output URL of Job with Max Duration (' + node_max_duration + ' mins:) ' + node_max_duration_url + '/console' + '\n'
         ci_metrics_report = ci_metrics_report + node_duration_output
         ci_metrics_report_plain = ci_metrics_report_plain + pnode_duration_output
         
@@ -272,7 +277,7 @@ def generate_ci_metrics_report(run_date, total_num_of_jobs, nodes, jobs_summary_
     summary.close()
 
     # Send the CI Metrics Report as Email
-    send_ci_report_in_email(run_date, ci_metrics_report_plain)
+    # send_ci_report_in_email(run_date, ci_metrics_report_plain)
 
 
 def send_ci_report_in_email(run_date, ci_metrics_report):
@@ -307,7 +312,7 @@ def user_friendly_secs(ms):
     return '%.2f' % minutes
 
 
-def return_percentiles(list_of_numbers):
+def get_percentiles(list_of_numbers):
     list_of_numbers_sorted = sorted(list_of_numbers)
     p50 = percentile(list_of_numbers_sorted, 0.50)
     p75 = percentile(list_of_numbers_sorted, 0.75)
@@ -337,7 +342,7 @@ def percentile(N, percent, key=lambda x:x):
 
 
 def process_build_xml_file(build_xml_file_name):
-    job_duration, job_builton, job_result, process_build_status = "Undef", "Undef", "Undef", "_ERR_"
+    job_number, job_duration, job_builton, job_result, process_build_status = "Undef", "Undef", "Undef", "Undef", "_ERR_"
     if os.path.isfile(build_xml_file_name):
         process_build_status = "SUCCESS"
         tree = ET.parse(build_xml_file_name)
@@ -349,7 +354,9 @@ def process_build_xml_file(build_xml_file_name):
                 job_builton = child.text
             elif child.tag == 'result':
                 job_result = child.text
-    return job_duration, job_builton, job_result, process_build_status
+            elif child.tag == 'number':
+                job_number = child.text
+    return job_number, job_duration, job_builton, job_result, process_build_status
 
 
 def get_job_run_basics(job_run):
@@ -381,6 +388,30 @@ def get_job_key(line_tokens):
                 job_key = job_key + ':' + el
 
     return job_key
+
+
+def get_job_url(job_key, job_number):
+    job_key_elements = job_key.split(':')
+    job_url = 'https://ci.cisco.com/job/'
+    index = 0
+    for el in job_key_elements:
+        if index == len(job_key_elements) - 1:
+            job_url = job_url + el + '/'
+        else:
+            job_url = job_url + el + '/job/'
+        index = index + 1
+    job_url = job_url + job_number
+    return job_url
+
+
+def get_job_url_by_duration(node_duration_dict, node_max_duration_msec):
+    job_url = 'Undef'
+    for url, duration in node_duration_dict.items():
+        if duration == node_max_duration_msec:
+            job_url = url
+            break
+    return job_url    
+
 
 
 def print_usage_and_exit():
