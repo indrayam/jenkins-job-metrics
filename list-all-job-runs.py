@@ -392,15 +392,18 @@ def get_job_key(line_tokens):
 
 def get_job_url(job_key, job_number):
     job_key_elements = job_key.split(':')
-    job_url = 'https://ci.cisco.com/job/'
+    job_url = 'https://ci.cisco.com'
     index = 0
     for el in job_key_elements:
+        if el == 'modules':
+            job_url = job_url.rstrip('/job/')
+            continue
         if index == len(job_key_elements) - 1:
-            job_url = job_url + el + '/'
+            job_url = job_url + '/job/' + el
         else:
-            job_url = job_url + el + '/job/'
+            job_url = job_url + '/job/' + el
         index = index + 1
-    job_url = job_url + job_number
+    job_url = job_url + '/' + job_number
     return job_url
 
 
