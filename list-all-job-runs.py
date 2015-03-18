@@ -277,7 +277,7 @@ def generate_ci_metrics_report(run_date, total_num_of_jobs, nodes, jobs_summary_
     summary.close()
 
     # Send the CI Metrics Report as Email
-    # send_ci_report_in_email(run_date, ci_metrics_report_plain)
+    send_ci_report_in_email(run_date, ci_metrics_report_plain)
 
 
 def send_ci_report_in_email(run_date, ci_metrics_report):
