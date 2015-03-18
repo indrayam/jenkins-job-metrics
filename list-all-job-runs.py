@@ -441,7 +441,8 @@ if __name__ == "__main__":
         if len(sys.argv) > 2:
             start_date = sys.argv[2]
         else:
-            start_date = datetime.datetime.today().strftime('%Y-%m-%d')
+            yesterday = datetime.date.today() - datetime.timedelta(1)
+            start_date = yesterday.strftime('%Y-%m-%d')
         start_date_obj = datetime.datetime.strptime(start_date, '%Y-%m-%d').date()
 
         # Grab or Derive the End Date
