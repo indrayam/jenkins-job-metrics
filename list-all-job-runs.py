@@ -12,8 +12,52 @@ import xml.etree.ElementTree as ET
 from color import red, green, yellow, blue, magenta, cyan, white
 
 
-def generate_build_xml_file_list(top_level_folder_path, all_runs_file, run_date):
+def generate_config_xml_file_list(top_level_folder_path, all_jobs_file, run_date):
+    cmd = 'ag -l --xml \"<project>|</maven2-moduleset>\" ' + top_level_folder_path
+    args = shlex.split(cmd)
+    with open(all_jobs_file, 'w') as out:
+        p2 = Popen(args, stdout=out, stderr=PIPE, stdin=PIPE, cwd=os.getcwd())
+        output, err = p2.communicate()
+        rc = p2.returncode
+        if rc > 0:
+            print(err.decode('utf-8'), end='')
 
+
+def process_config_xml_file_list(run_date, all_jobs_file, jobs_output_data_folder):
+    jobs = {}
+
+    # Process all config.xml files in all-jobs.txt and set up dictionary of dictionaries data structure
+    ts = time.time()
+    audit_timestamp = datetime.datetime.fromtimestamp(ts).strftime('%Y-%m-%d_%H-%M-%S')
+    audit_job_log_file = open(jobs_output_data_folder + '/audit/' + run_date + '_' + audit_timestamp + '-audit-jobs.log', 'w')
+    with open(all_jobs_file, 'r') as file:
+        for line in file:
+            config_xml_file_name = line.strip()
+            job_key, job_name, job_basics_status = get_job_basics(config_xml_file_name)
+            if job_basics_status == '_ERR_':
+                audit_job_log_file.write('_ERR_: File Path Parsing Error ' + build_xml_file_name + '\n')
+                continue
+            audit_job_log_file.write(job_key + '|' + job_key + '|' + job_name + '\n')
+            # print('job_key', job_key, 'job_name', job_name)
+            
+            # Jobs Dictionary of Dictionary
+            if job_key not in jobs:
+                jobs[job_key] = { 'name': job_name}
+
+    return jobs 
+
+
+def get_job_basics(job_run):
+    job_key, job_name, job_basics_status = "Undef", "Undef", "_ERR_"
+    line_tokens = job_run.split('/')
+    job_key = get_job_key(line_tokens[:-1])
+    job_name = line_tokens[-2]
+    if job_name != "Undef":
+        job_basics_status = "SUCCESS"
+    return job_key, job_name, job_basics_status
+
+
+def generate_build_xml_file_list(top_level_folder_path, all_runs_file, run_date):
     cmd = 'find ' + top_level_folder_path + ' -name build.xml'
     args = shlex.split(cmd)
     p1 = Popen(args,
@@ -28,10 +72,10 @@ def generate_build_xml_file_list(top_level_folder_path, all_runs_file, run_date)
             print(err.decode('utf-8'), end='')
 
 
-def process_build_xml_file_list(run_date, all_runs_file, jobs_output_data_folder):
+def process_build_xml_file_list(run_date, all_runs_file, jobs_output_data_folder, all_jobs):
 
     # define variables to capture overall data
-    total_num_of_jobs = 0
+    total_num_of_job_runs = 0
     job_runs = {}
     job_runs_by_org = {}
     job_results = {}
@@ -45,7 +89,7 @@ def process_build_xml_file_list(run_date, all_runs_file, jobs_output_data_folder
     # Process all build.xml files in all-runs.txt and set up dictionary of dictionaries data structure
     ts = time.time()
     audit_timestamp = datetime.datetime.fromtimestamp(ts).strftime('%Y-%m-%d_%H-%M-%S')
-    audit_log_file = open(jobs_output_data_folder + '/audit/' + run_date + '_' + audit_timestamp + '-audit.log', 'w')
+    audit_log_file = open(jobs_output_data_folder + '/audit/' + run_date + '_' + audit_timestamp + '-audit-job-runs.log', 'w')
     with open(all_runs_file, 'r') as file:
         for line in file:
             build_xml_file_name = line.strip()
@@ -61,7 +105,7 @@ def process_build_xml_file_list(run_date, all_runs_file, jobs_output_data_folder
             audit_log_file.write(job_key + '|' + job_number + '|' + job_date + '|' + job_time_hr + ':' + job_time_min + '|' + job_duration + '|' + job_builton + '|' + job_result + '|' + job_url + '\n')
             
             # Create a total count of all the jobs
-            total_num_of_jobs = total_num_of_jobs + 1
+            total_num_of_job_runs = total_num_of_job_runs + 1
             
             # Nodes Dictionary of Dictionaries
             if job_builton not in nodes:
@@ -107,10 +151,10 @@ def process_build_xml_file_list(run_date, all_runs_file, jobs_output_data_folder
 
     # Generate summary report
     jobs_summary_report_filename = jobs_output_data_folder + run_date + '.txt'
-    generate_ci_metrics_report(run_date, total_num_of_jobs, nodes, jobs_summary_report_filename, job_runs, job_results, job_runs_by_org, total_num_of_jobs_by_hr)
+    generate_ci_metrics_report(run_date, all_jobs, total_num_of_job_runs, nodes, jobs_summary_report_filename, job_runs, job_results, job_runs_by_org, total_num_of_jobs_by_hr)
 
 
-def generate_ci_metrics_report(run_date, total_num_of_jobs, nodes, jobs_summary_report_filename, job_runs, job_results, job_runs_by_org, total_num_of_jobs_by_hr):
+def generate_ci_metrics_report(run_date, all_jobs, total_num_of_job_runs, nodes, jobs_summary_report_filename, job_runs, job_results, job_runs_by_org, total_num_of_jobs_by_hr):
     run_date_obj = datetime.datetime.strptime(run_date, '%Y-%m-%d').date()
     summary = open(jobs_summary_report_filename, 'w')
 
@@ -126,10 +170,19 @@ def generate_ci_metrics_report(run_date, total_num_of_jobs, nodes, jobs_summary_
     ci_metrics_report = ci_metrics_report + fragment2
     ci_metrics_report_plain = ci_metrics_report_plain + fragment2
 
-    fragment3 = "Total Number of Job Runs: " + green(total_num_of_jobs) + "\n"
-    pfragment3 = "Total Number of Job Runs: " + str(total_num_of_jobs) + "\n"
-    ci_metrics_report = ci_metrics_report + fragment3
-    ci_metrics_report_plain = ci_metrics_report_plain + pfragment3
+    total_num_of_jobs = 0
+    for job_key, job_details in all_jobs.items():
+        total_num_of_jobs = total_num_of_jobs + 1
+
+    fragment3a = "Total Number of Unique Jobs in CI: " + green(total_num_of_jobs) + "\n"
+    pfragment3a = "Total Number of Unique Jobs in CI: " + str(total_num_of_jobs) + "\n"
+    ci_metrics_report = ci_metrics_report + fragment3a
+    ci_metrics_report_plain = ci_metrics_report_plain + pfragment3a
+
+    fragment3b = "Total Number of Job Runs: " + green(total_num_of_job_runs) + "\n"
+    pfragment3b = "Total Number of Job Runs: " + str(total_num_of_job_runs) + "\n"
+    ci_metrics_report = ci_metrics_report + fragment3b
+    ci_metrics_report_plain = ci_metrics_report_plain + pfragment3b
     
     fragment4 = "\tJob Run Count By Build Status: "
     ci_metrics_report = ci_metrics_report + fragment4
@@ -161,8 +214,8 @@ def generate_ci_metrics_report(run_date, total_num_of_jobs, nodes, jobs_summary_
     ci_metrics_report = ci_metrics_report + overall_job_run_timeline_output + "\n"
     ci_metrics_report_plain = ci_metrics_report_plain + poverall_job_run_timeline_output + "\n"
 
-    fragment6 = "Total Number of Unique Jobs: " + green(len(job_runs)) + "\n"
-    pfragment6 = "Total Number of Unique Jobs: " + str(len(job_runs)) + "\n"
+    fragment6 = "\tJobs That Ran: " + green(len(job_runs)) + " (Out of " + str(total_num_of_jobs) + " Total Jobs)\n"
+    pfragment6 = "\tJobs That Ran: " + str(len(job_runs)) + " (Out of " + str(total_num_of_jobs) + " Total Jobs)\n"
     ci_metrics_report = ci_metrics_report + fragment6
     ci_metrics_report_plain = ci_metrics_report_plain + pfragment6
  
@@ -258,9 +311,9 @@ def generate_ci_metrics_report(run_date, total_num_of_jobs, nodes, jobs_summary_
             node_min_duration = 'NA'
             node_duration_p50 = 'NA'
             node_duration_p75 = 'NA'
-        node_duration_output = '\t\tJob Run Duration Stats (in mins): Max Duration = ' + cyan(node_max_duration) + ', Min Duration = ' + cyan(node_min_duration) + ', 50th-percentile = ' + cyan(node_duration_p50) + ', 75th-percentile =' + cyan(node_duration_p75) + '\n'
+        node_duration_output = '\t\tJob Run Duration Stats (in mins): Max Duration = ' + cyan(node_max_duration) + ', Min Duration = ' + cyan(node_min_duration) + ', 50th-percentile = ' + cyan(node_duration_p50) + ', 75th-percentile = ' + cyan(node_duration_p75) + '\n'
         node_duration_output = node_duration_output + '\t\tConsole Output URL of Job with Max Duration (' + node_max_duration + ' mins): ' + node_max_duration_url + '/console' + '\n'
-        pnode_duration_output = '\t\tJob Run Duration Stats (in mins): Max Duration = ' + str(node_max_duration) + ', Min Duration = ' + str(node_min_duration) + ', 50th-percentile = ' + str(node_duration_p50) + ', 75th-percentile =' + str(node_duration_p75) + '\n'
+        pnode_duration_output = '\t\tJob Run Duration Stats (in mins): Max Duration = ' + str(node_max_duration) + ', Min Duration = ' + str(node_min_duration) + ', 50th-percentile = ' + str(node_duration_p50) + ', 75th-percentile = ' + str(node_duration_p75) + '\n'
         pnode_duration_output = pnode_duration_output + '\t\tConsole Output URL of Job with Max Duration (' + node_max_duration + ' mins:) ' + node_max_duration_url + '/console' + '\n'
         ci_metrics_report = ci_metrics_report + node_duration_output
         ci_metrics_report_plain = ci_metrics_report_plain + pnode_duration_output
@@ -459,7 +512,14 @@ if __name__ == "__main__":
                 run_date_obj = start_date_obj + datetime.timedelta(days=d)
                 run_date = run_date_obj.strftime('%Y-%m-%d')
                 all_runs_file = os.getcwd() + '/all-runs.txt'
+                all_jobs_file = os.getcwd() + '/all-jobs.txt'
+                
+                # Get Jobs Metrics
+                generate_config_xml_file_list(top_level_folder_path, all_jobs_file, run_date)
+                all_jobs = process_config_xml_file_list(run_date, all_jobs_file, jobs_output_data_folder)
+
+                # Get Job Runs Metrics
                 generate_build_xml_file_list(top_level_folder_path, all_runs_file, run_date)
-                process_build_xml_file_list(run_date, all_runs_file, jobs_output_data_folder)
+                process_build_xml_file_list(run_date, all_runs_file, jobs_output_data_folder, all_jobs)
         else:
             print_usage_and_exit()
