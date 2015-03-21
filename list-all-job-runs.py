@@ -175,8 +175,8 @@ def generate_ci_metrics_report(run_date, all_jobs, total_num_of_job_runs, nodes,
         total_num_of_jobs = total_num_of_jobs + 1
 
     today = datetime.date.today()
-    stoday = today.strftime('%Y-%m-%d')
-    fragment3a = "Total Number of Unique Jobs in CI: " + green(total_num_of_jobs) + " (as of " + stoday + ")\n"
+    stoday = today.strftime('%Y-%m-%d %H-%M-%S')
+    fragment3a = "Total Number of Unique Jobs in CI: " + green(total_num_of_jobs) + " (as of " + stoday + " Pacific Time)\n"
     pfragment3a = "Total Number of Unique Jobs in CI: " + str(total_num_of_jobs) + "\n"
     ci_metrics_report = ci_metrics_report + fragment3a
     ci_metrics_report_plain = ci_metrics_report_plain + pfragment3a
