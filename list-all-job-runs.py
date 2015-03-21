@@ -174,7 +174,9 @@ def generate_ci_metrics_report(run_date, all_jobs, total_num_of_job_runs, nodes,
     for job_key, job_details in all_jobs.items():
         total_num_of_jobs = total_num_of_jobs + 1
 
-    fragment3a = "Total Number of Unique Jobs in CI: " + green(total_num_of_jobs) + "\n"
+    today = datetime.date.today()
+    stoday = today.strftime('%Y-%m-%d')
+    fragment3a = "Total Number of Unique Jobs in CI: " + green(total_num_of_jobs) + " (as of " + stoday + ")\n"
     pfragment3a = "Total Number of Unique Jobs in CI: " + str(total_num_of_jobs) + "\n"
     ci_metrics_report = ci_metrics_report + fragment3a
     ci_metrics_report_plain = ci_metrics_report_plain + pfragment3a
@@ -214,8 +216,8 @@ def generate_ci_metrics_report(run_date, all_jobs, total_num_of_job_runs, nodes,
     ci_metrics_report = ci_metrics_report + overall_job_run_timeline_output + "\n"
     ci_metrics_report_plain = ci_metrics_report_plain + poverall_job_run_timeline_output + "\n"
 
-    fragment6 = "\tJobs That Ran: " + green(len(job_runs)) + " (Out of " + green(total_num_of_jobs) + " Total Jobs)\n"
-    pfragment6 = "\tJobs That Ran: " + str(len(job_runs)) + " (Out of " + str(total_num_of_jobs) + " Total Jobs)\n"
+    fragment6 = "\tJobs That Ran: " + green(len(job_runs)) + "\n"
+    pfragment6 = "\tJobs That Ran: " + str(len(job_runs)) + "\n"
     ci_metrics_report = ci_metrics_report + fragment6
     ci_metrics_report_plain = ci_metrics_report_plain + pfragment6
  
