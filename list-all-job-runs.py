@@ -150,12 +150,12 @@ def process_build_xml_file_list(run_date, all_runs_file, jobs_output_data_folder
     audit_log_file.close()
 
     # Generate summary report
-    jobs_summary_report_filename = jobs_output_data_folder + run_date + '.txt'
-    generate_ci_metrics_report(run_date, all_jobs, total_num_of_job_runs, nodes, jobs_summary_report_filename, job_runs, job_results, job_runs_by_org, total_num_of_jobs_by_hr)
+    generate_ci_metrics_report(run_date, all_jobs, total_num_of_job_runs, nodes, job_runs, job_results, job_runs_by_org, total_num_of_jobs_by_hr)
 
 
-def generate_ci_metrics_report(run_date, all_jobs, total_num_of_job_runs, nodes, jobs_summary_report_filename, job_runs, job_results, job_runs_by_org, total_num_of_jobs_by_hr):
+def generate_ci_metrics_report(run_date, all_jobs, total_num_of_job_runs, nodes, job_runs, job_results, job_runs_by_org, total_num_of_jobs_by_hr):
     run_date_obj = datetime.datetime.strptime(run_date, '%Y-%m-%d').date()
+    jobs_summary_report_filename = get_summary_report_filename(jobs_output_data_folder, run_date)
     summary = open(jobs_summary_report_filename, 'w')
 
     ci_metrics_report = '*' * 150 + "\n"
@@ -356,6 +356,16 @@ def send_ci_report_in_email(run_date, ci_metrics_report):
         print("Successfully sent email with Subject:", SUBJECT)
     except:
         print("WARNING: Failed to send email with Subject:", SUBJECT)
+
+
+def get_summary_report_filename(jobs_output_data_folder, run_date):
+    jobs_summary_report_filename = jobs_output_data_folder + run_date + '.txt'
+    if os.path.isfile(jobs_summary_report_filename):
+        ts = time.time()
+        run_date = run_date + '_' + datetime.datetime.fromtimestamp(ts).strftime('%Y-%m-%d_%H-%M-%S')
+        jobs_summary_report_filename = jobs_output_data_folder + run_date + '.txt'
+    return jobs_summary_report_filename
+
 
 def user_friendly_secs(ms):
     seconds = ms / 1000.0
