@@ -13,7 +13,7 @@ from color import red, green, yellow, blue, magenta, cyan, white
 
 
 def generate_config_xml_file_list(top_level_folder_path, all_jobs_file, run_date):
-    cmd = 'ag -l --xml \"<project>|</maven2-moduleset>\" ' + top_level_folder_path
+    cmd = 'ag -l --depth 50 --xml \"<project>|</maven2-moduleset>\" ' + top_level_folder_path
     args = shlex.split(cmd)
     with open(all_jobs_file, 'w') as out:
         p2 = Popen(args, stdout=out, stderr=PIPE, stdin=PIPE, cwd=os.getcwd())
@@ -89,7 +89,7 @@ def process_build_xml_file_list(run_date, all_runs_file, jobs_output_data_folder
     # Process all build.xml files in all-runs.txt and set up dictionary of dictionaries data structure
     ts = time.time()
     audit_timestamp = datetime.datetime.fromtimestamp(ts).strftime('%Y-%m-%d_%H-%M-%S')
-    audit_log_file = open(jobs_output_data_folder + '/audit/' + run_date + '_' + audit_timestamp + '-audit-job-runs.log', 'w')
+    audit_log_file = open(jobs_output_data_folder + '/audit/' + run_date + '_' + audit_timestamp + '-audit.log', 'w')
     with open(all_runs_file, 'r') as file:
         for line in file:
             build_xml_file_name = line.strip()
@@ -214,7 +214,7 @@ def generate_ci_metrics_report(run_date, all_jobs, total_num_of_job_runs, nodes,
     ci_metrics_report = ci_metrics_report + overall_job_run_timeline_output + "\n"
     ci_metrics_report_plain = ci_metrics_report_plain + poverall_job_run_timeline_output + "\n"
 
-    fragment6 = "\tJobs That Ran: " + green(len(job_runs)) + " (Out of " + str(total_num_of_jobs) + " Total Jobs)\n"
+    fragment6 = "\tJobs That Ran: " + green(len(job_runs)) + " (Out of " + green(total_num_of_jobs) + " Total Jobs)\n"
     pfragment6 = "\tJobs That Ran: " + str(len(job_runs)) + " (Out of " + str(total_num_of_jobs) + " Total Jobs)\n"
     ci_metrics_report = ci_metrics_report + fragment6
     ci_metrics_report_plain = ci_metrics_report_plain + pfragment6
