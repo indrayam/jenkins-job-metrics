@@ -334,11 +334,9 @@ def generate_ci_metrics_report(run_date, all_jobs, total_num_of_job_runs, nodes,
 
 
 def send_ci_report_in_email(run_date, ci_metrics_report):
-    # email_user = "anand.sharma@gmail.com"
     email_user = "anasharm@cisco.com"
     # email_pwd = ""
     FROM = "anasharm@cisco.com"
-    # FROM = "anand.sharma@gmail.com"
     TO = ["anasharm@cisco.com", "sujmuthu@cisco.com", "vivekse@cisco.com", "plashkar@cisco.com", "dhsanghv@cisco.com", "azsivara@cisco.com", "vijmanda@cisco.com", "dchrist2@cisco.com", "avijayku@cisco.com", "yogyadav@cisco.com", "mehaggar@cisco.com", "rbaratam@cisco.com", "jvenanci@cisco.com"]
     SUBJECT = "CI Job Run Summary Report for " + run_date
     TEXT = ci_metrics_report
@@ -347,13 +345,11 @@ def send_ci_report_in_email(run_date, ci_metrics_report):
     message = """\From: %s\nTo: %s\nSubject: %s\n\n%s
     """ % (FROM, ", ".join(TO), SUBJECT, TEXT)
     try:
-        # server = smtplib.SMTP("smtp.gmail.com", 587) 
         server = smtplib.SMTP("email.cisco.com", 587) 
         server.ehlo()
         server.starttls()
         server.login(email_user, email_pwd)
         server.sendmail(FROM, TO, message)
-        #server.quit()
         server.close()
         print("Successfully sent email with Subject:", SUBJECT)
     except:
