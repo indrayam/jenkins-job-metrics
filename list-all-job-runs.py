@@ -23,13 +23,11 @@ def generate_config_xml_file_list(top_level_folder_path, all_jobs_file, run_date
             print(err.decode('utf-8'), end='')
 
 
-def process_config_xml_file_list(run_date, all_jobs_file, jobs_output_data_folder):
+def process_config_xml_file_list(run_date, run_timestamp, all_jobs_file, jobs_output_data_folder):
     jobs = {}
 
     # Process all config.xml files in all-jobs.txt and set up dictionary of dictionaries data structure
-    ts = time.time()
-    audit_timestamp = datetime.datetime.fromtimestamp(ts).strftime('%Y-%m-%d_%H-%M-%S')
-    audit_job_log_file = open(jobs_output_data_folder + '/audit/' + run_date + '_' + audit_timestamp + '-audit-jobs.log', 'w')
+    audit_job_log_file = open(jobs_output_data_folder + '/audit/' + run_date + '_' + run_timestamp + '-audit-jobs.log', 'w')
     with open(all_jobs_file, 'r') as file:
         for line in file:
             config_xml_file_name = line.strip()
@@ -37,7 +35,7 @@ def process_config_xml_file_list(run_date, all_jobs_file, jobs_output_data_folde
             if job_basics_status == '_ERR_':
                 audit_job_log_file.write('_ERR_: File Path Parsing Error ' + build_xml_file_name + '\n')
                 continue
-            audit_job_log_file.write(job_key + '|' + job_key + '|' + job_name + '\n')
+            audit_job_log_file.write(job_key + '|' + job_name + '\n')
             # print('job_key', job_key, 'job_name', job_name)
             
             # Jobs Dictionary of Dictionary
@@ -72,7 +70,7 @@ def generate_build_xml_file_list(top_level_folder_path, all_runs_file, run_date)
             print(err.decode('utf-8'), end='')
 
 
-def process_build_xml_file_list(run_date, all_runs_file, jobs_output_data_folder, all_jobs):
+def process_build_xml_file_list(run_date, run_timestamp, all_runs_file, jobs_output_data_folder, all_jobs):
 
     # define variables to capture overall data
     total_num_of_job_runs = 0
@@ -87,9 +85,7 @@ def process_build_xml_file_list(run_date, all_runs_file, jobs_output_data_folder
     
 
     # Process all build.xml files in all-runs.txt and set up dictionary of dictionaries data structure
-    ts = time.time()
-    audit_timestamp = datetime.datetime.fromtimestamp(ts).strftime('%Y-%m-%d_%H-%M-%S')
-    audit_log_file = open(jobs_output_data_folder + '/audit/' + run_date + '_' + audit_timestamp + '-audit.log', 'w')
+    audit_log_file = open(jobs_output_data_folder + '/audit/' + run_date + '_' + run_timestamp + '-audit.log', 'w')
     with open(all_runs_file, 'r') as file:
         for line in file:
             build_xml_file_name = line.strip()
@@ -150,12 +146,12 @@ def process_build_xml_file_list(run_date, all_runs_file, jobs_output_data_folder
     audit_log_file.close()
 
     # Generate summary report
-    generate_ci_metrics_report(run_date, all_jobs, total_num_of_job_runs, nodes, job_runs, job_results, job_runs_by_org, total_num_of_jobs_by_hr)
+    generate_ci_metrics_report(run_date, run_timestamp, all_jobs, total_num_of_job_runs, nodes, job_runs, job_results, job_runs_by_org, total_num_of_jobs_by_hr)
 
 
-def generate_ci_metrics_report(run_date, all_jobs, total_num_of_job_runs, nodes, job_runs, job_results, job_runs_by_org, total_num_of_jobs_by_hr):
+def generate_ci_metrics_report(run_date, run_timestamp, all_jobs, total_num_of_job_runs, nodes, job_runs, job_results, job_runs_by_org, total_num_of_jobs_by_hr):
     run_date_obj = datetime.datetime.strptime(run_date, '%Y-%m-%d').date()
-    jobs_summary_report_filename = get_summary_report_filename(jobs_output_data_folder, run_date)
+    jobs_summary_report_filename = get_summary_report_filename(jobs_output_data_folder, run_date, run_timestamp)
     summary = open(jobs_summary_report_filename, 'w')
 
     ci_metrics_report = '*' * 150 + "\n"
@@ -358,12 +354,10 @@ def send_ci_report_in_email(run_date, ci_metrics_report):
         print("WARNING: Failed to send email with Subject:", SUBJECT)
 
 
-def get_summary_report_filename(jobs_output_data_folder, run_date):
+def get_summary_report_filename(jobs_output_data_folder, run_date, run_timestamp):
     jobs_summary_report_filename = jobs_output_data_folder + run_date + '.txt'
     if os.path.isfile(jobs_summary_report_filename):
-        ts = time.time()
-        run_date = run_date + '_' + datetime.datetime.fromtimestamp(ts).strftime('%Y-%m-%d_%H-%M-%S')
-        jobs_summary_report_filename = jobs_output_data_folder + run_date + '.txt'
+        jobs_summary_report_filename = jobs_output_data_folder + run_date + '_' + run_timestamp + '.txt'
     return jobs_summary_report_filename
 
 
@@ -522,12 +516,16 @@ if __name__ == "__main__":
                 all_runs_file = os.getcwd() + '/all-runs.txt'
                 all_jobs_file = os.getcwd() + '/all-jobs.txt'
                 
+                # Get a timestamp for all the logs
+                ts = time.time()
+                run_timestamp = datetime.datetime.fromtimestamp(ts).strftime('%Y-%m-%d_%H-%M-%S')
+
                 # Get Jobs Metrics
                 generate_config_xml_file_list(top_level_folder_path, all_jobs_file, run_date)
-                all_jobs = process_config_xml_file_list(run_date, all_jobs_file, jobs_output_data_folder)
+                all_jobs = process_config_xml_file_list(run_date, run_timestamp, all_jobs_file, jobs_output_data_folder)
 
                 # Get Job Runs Metrics
                 generate_build_xml_file_list(top_level_folder_path, all_runs_file, run_date)
-                process_build_xml_file_list(run_date, all_runs_file, jobs_output_data_folder, all_jobs)
+                process_build_xml_file_list(run_date, run_timestamp, all_runs_file, jobs_output_data_folder, all_jobs)
         else:
             print_usage_and_exit()
