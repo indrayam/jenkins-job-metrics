@@ -299,7 +299,7 @@ def generate_ci_metrics_report(run_date, run_timestamp, all_jobs, total_num_of_j
         if len(node_duration_values) > 0:
             node_max_duration_msec = max(node_duration_values)
             node_max_duration = user_friendly_secs(node_max_duration_msec)
-            node_max_duration_url = get_job_url_by_duration(node_stats_type['duration'], node_max_duration_msec)
+            node_max_duration_url = get_job_url_by_duration(node_stats_type['duration'], node_max_duration_msec) + '/console'
             node_min_duration = user_friendly_secs(min(node_duration_values))
             node_duration_p50, node_duration_p75 = get_percentiles(node_duration_values)
             node_duration_p50 = user_friendly_secs(node_duration_p50)
@@ -310,10 +310,10 @@ def generate_ci_metrics_report(run_date, run_timestamp, all_jobs, total_num_of_j
             node_min_duration = 'NA'
             node_duration_p50 = 'NA'
             node_duration_p75 = 'NA'
-        node_duration_output = '\t\tJob Run Duration Stats (in mins): Max Duration = ' + cyan(node_max_duration) + ', Min Duration = ' + cyan(node_min_duration) + ', 50th-percentile = ' + cyan(node_duration_p50) + ', 75th-percentile = ' + cyan(node_duration_p75) + '\n'
-        node_duration_output = node_duration_output + '\t\tConsole Output URL of Job with Max Duration (' + node_max_duration + ' mins): ' + node_max_duration_url + '/console' + '\n'
-        pnode_duration_output = '\t\tJob Run Duration Stats (in mins): Max Duration = ' + str(node_max_duration) + ', Min Duration = ' + str(node_min_duration) + ', 50th-percentile = ' + str(node_duration_p50) + ', 75th-percentile = ' + str(node_duration_p75) + '\n'
-        pnode_duration_output = pnode_duration_output + '\t\tConsole Output URL of Job with Max Duration (' + node_max_duration + ' mins:) ' + node_max_duration_url + '/console' + '\n'
+        node_duration_output = '\t\tJob Run Duration Stats of Successful Job Runs (in mins): Max Duration = ' + cyan(node_max_duration) + ', Min Duration = ' + cyan(node_min_duration) + ', 50th-percentile = ' + cyan(node_duration_p50) + ', 75th-percentile = ' + cyan(node_duration_p75) + '\n'
+        node_duration_output = node_duration_output + '\t\tConsole Output URL of Job Run with Max Duration (' + node_max_duration + ' mins): ' + node_max_duration_url + '\n'
+        pnode_duration_output = '\t\tJob Run Duration Stats of Successful Job Runs (in mins): Max Duration = ' + str(node_max_duration) + ', Min Duration = ' + str(node_min_duration) + ', 50th-percentile = ' + str(node_duration_p50) + ', 75th-percentile = ' + str(node_duration_p75) + '\n'
+        pnode_duration_output = pnode_duration_output + '\t\tConsole Output URL of Job Run with Max Duration (' + node_max_duration + ' mins:) ' + node_max_duration_url + '\n'
         ci_metrics_report = ci_metrics_report + node_duration_output
         ci_metrics_report_plain = ci_metrics_report_plain + pnode_duration_output
         
