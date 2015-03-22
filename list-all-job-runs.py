@@ -306,6 +306,7 @@ def generate_ci_metrics_report(run_date, run_timestamp, all_jobs, total_num_of_j
             node_duration_p75 = user_friendly_secs(node_duration_p75)
         else:
             node_max_duration = 'NA'
+            node_max_duration_url = 'NA'
             node_min_duration = 'NA'
             node_duration_p50 = 'NA'
             node_duration_p75 = 'NA'
