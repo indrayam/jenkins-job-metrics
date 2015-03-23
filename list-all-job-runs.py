@@ -330,7 +330,7 @@ def generate_ci_metrics_report(run_date, run_timestamp, all_jobs, total_num_of_j
     ci_metrics_report = ci_metrics_report + fragmentj3
     ci_metrics_report_plain = ci_metrics_report_plain + pfragmentj3
 
-    fragmentj4 = "\tBy Org (Number of Jobs > 100):\n"
+    fragmentj4 = "\tBy Org (Number of Jobs > 50):\n"
     ci_metrics_report = ci_metrics_report + fragmentj4
     ci_metrics_report_plain = ci_metrics_report_plain + fragmentj4
     all_jobs_by_org_output = '\t\t'
@@ -364,6 +364,19 @@ def generate_ci_metrics_report(run_date, run_timestamp, all_jobs, total_num_of_j
     pall_jobs_by_type_output = pall_jobs_by_type_output.strip(', ') + "\n"
     ci_metrics_report = ci_metrics_report + all_jobs_by_type_output
     ci_metrics_report_plain = ci_metrics_report_plain + pall_jobs_by_type_output
+
+    fragmentj6 = "\tBy Status: "
+    ci_metrics_report = ci_metrics_report + fragmentj6
+    ci_metrics_report_plain = ci_metrics_report_plain + fragmentj6
+    all_jobs_by_status_output = ''
+    pall_jobs_by_status_output = ''
+    for job_status, job_status_count in all_jobs_by_type_count.items():
+        all_jobs_by_status_output = all_jobs_by_status_output + job_type + ' = ' + str(job_status_count) + ', '
+        pall_jobs_by_status_output = pall_jobs_by_status_output + job_type + ' = ' + str(job_status_count) + ', '
+    all_jobs_by_status_output = all_jobs_by_status_output.strip(', ') + "\n"
+    pall_jobs_by_status_output = pall_jobs_by_status_output.strip(', ') + "\n"
+    ci_metrics_report = ci_metrics_report + all_jobs_by_status_output
+    ci_metrics_report_plain = ci_metrics_report_plain + pall_jobs_by_status_output
 
     ci_metrics_report = ci_metrics_report + '*' * 150 + "\n"
     ci_metrics_report_plain = ci_metrics_report_plain + '*' * 150 + "\n"
