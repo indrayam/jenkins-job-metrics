@@ -330,22 +330,21 @@ def generate_ci_metrics_report(run_date, run_timestamp, all_jobs, total_num_of_j
     ci_metrics_report = ci_metrics_report + fragmentj3
     ci_metrics_report_plain = ci_metrics_report_plain + pfragmentj3
 
-    fragmentj4 = "\tBy Job Org (Number of Jobs > 50):\n"
+    fragmentj4 = "\tBy Job Org:\n"
     ci_metrics_report = ci_metrics_report + fragmentj4
     ci_metrics_report_plain = ci_metrics_report_plain + fragmentj4
     all_jobs_by_org_output = '\t\t'
     pall_jobs_by_org_output = '\t\t'
     org_count_index = 0
     for job_org, job_org_count in all_jobs_by_org_count.items():
-        if job_org_count > 50:
             if org_count_index < 3:
                 all_jobs_by_org_output = all_jobs_by_org_output + job_org + ' = ' + str(job_org_count) + ', '
-                pall_jobs_by_type_output = pall_jobs_by_org_output + job_org + ' = ' + str(job_org_count) + ', '
+                pall_jobs_by_org_output = pall_jobs_by_org_output + job_org + ' = ' + str(job_org_count) + ', '
                 org_count_index = org_count_index + 1
             else:
                 org_count_index = 0
                 all_jobs_by_org_output = all_jobs_by_org_output.strip(', ') + "\n\t\t" + job_org + ' = ' + str(job_org_count) + ', '
-                pall_jobs_by_type_output = pall_jobs_by_org_output.strip(', ') + "\n\t\t" + job_org + ' = ' + str(job_org_count) + ', '
+                pall_jobs_by_org_output = pall_jobs_by_org_output.strip(', ') + "\n\t\t" + job_org + ' = ' + str(job_org_count) + ', '
                 org_count_index = org_count_index + 1
     all_jobs_by_org_output = all_jobs_by_org_output.strip(', ') + "\n"
     pall_jobs_by_org_output = pall_jobs_by_org_output.strip(', ') + "\n"
@@ -689,7 +688,7 @@ def process_build_xml_file(build_xml_file_name):
 def get_job_run_basics(job_run):
     job_key, job_name, job_date, job_time_hr, job_time_min, job_run_basics_status = "Undef", "Undef", "Undef", "Undef", "Undef", "_ERR_"
     line_tokens = job_run.split('/')
-    if line_tokens[-3] == 'builds':
+    if line_tokens[-3] == 'builds' and line_tokens[-5] != 'modules':
         job_run_basics_status = "SUCCESS"
         job_key = get_job_key(line_tokens[:-3])
         job_name = line_tokens[-4]
