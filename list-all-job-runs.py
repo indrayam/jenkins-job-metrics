@@ -67,12 +67,12 @@ def process_config_xml_file_list(run_date, run_timestamp, all_jobs_file, jobs_ou
                 job_timer_spec = timer[0].text
             spec_pattern = re.compile(r'#.*', re.I)
             if job_timer_spec == "Undef" or job_timer_spec is None:
-                job_timer_spec = "No"
+                job_timer_spec = "Unscheduled"
             else:
                 if spec_pattern.match(job_timer_spec):
-                    job_timer_spec = "Disabled"
+                    job_timer_spec = "Scheduled+Inactive"
                 else:
-                    job_timer_spec = "Yes"
+                    job_timer_spec = "Scheduled+Active"
             jobs[job_key]['timer'] = job_timer_spec
 
             # Setup Enabled vs Disabled Status of the Job
@@ -83,7 +83,7 @@ def process_config_xml_file_list(run_date, run_timestamp, all_jobs_file, jobs_ou
                 job_status = "Enabled"
             elif re.match(r'true', job_status, re.I):
                 job_status = "Disabled"
-            jobs[job_key]['status'] = job_timer_spec
+            jobs[job_key]['status'] = job_status
 
             # Setup SCM Status of the Job
             scm_feature = "Undef"
@@ -330,7 +330,7 @@ def generate_ci_metrics_report(run_date, run_timestamp, all_jobs, total_num_of_j
     ci_metrics_report = ci_metrics_report + fragmentj3
     ci_metrics_report_plain = ci_metrics_report_plain + pfragmentj3
 
-    fragmentj4 = "\tBy Org (Number of Jobs > 50):\n"
+    fragmentj4 = "\tBy Job Org (Number of Jobs > 50):\n"
     ci_metrics_report = ci_metrics_report + fragmentj4
     ci_metrics_report_plain = ci_metrics_report_plain + fragmentj4
     all_jobs_by_org_output = '\t\t'
@@ -347,12 +347,15 @@ def generate_ci_metrics_report(run_date, run_timestamp, all_jobs, total_num_of_j
                 all_jobs_by_org_output = all_jobs_by_org_output.strip(', ') + "\n\t\t" + job_org + ' = ' + str(job_org_count) + ', '
                 pall_jobs_by_type_output = pall_jobs_by_org_output.strip(', ') + "\n\t\t" + job_org + ' = ' + str(job_org_count) + ', '
                 org_count_index = org_count_index + 1
+        else:
+            all_jobs_by_org_output = all_jobs_by_org_output + 'NA'
+            pall_jobs_by_org_output = all_jobs_by_org_output + 'NA'
     all_jobs_by_org_output = all_jobs_by_org_output.strip(', ') + "\n"
     pall_jobs_by_org_output = pall_jobs_by_org_output.strip(', ') + "\n"
     ci_metrics_report = ci_metrics_report + all_jobs_by_org_output
     ci_metrics_report_plain = ci_metrics_report_plain + pall_jobs_by_org_output
 
-    fragmentj5 = "\tBy Type: "
+    fragmentj5 = "\tBy Job Type: "
     ci_metrics_report = ci_metrics_report + fragmentj5
     ci_metrics_report_plain = ci_metrics_report_plain + fragmentj5
     all_jobs_by_type_output = ''
@@ -365,18 +368,70 @@ def generate_ci_metrics_report(run_date, run_timestamp, all_jobs, total_num_of_j
     ci_metrics_report = ci_metrics_report + all_jobs_by_type_output
     ci_metrics_report_plain = ci_metrics_report_plain + pall_jobs_by_type_output
 
-    fragmentj6 = "\tBy Status: "
+    fragmentj6 = "\tBy Job Status: "
     ci_metrics_report = ci_metrics_report + fragmentj6
     ci_metrics_report_plain = ci_metrics_report_plain + fragmentj6
     all_jobs_by_status_output = ''
     pall_jobs_by_status_output = ''
-    for job_status, job_status_count in all_jobs_by_type_count.items():
-        all_jobs_by_status_output = all_jobs_by_status_output + job_type + ' = ' + str(job_status_count) + ', '
-        pall_jobs_by_status_output = pall_jobs_by_status_output + job_type + ' = ' + str(job_status_count) + ', '
+    for job_status, job_status_count in all_jobs_by_status_count.items():
+        all_jobs_by_status_output = all_jobs_by_status_output + job_status + ' = ' + str(job_status_count) + ', '
+        pall_jobs_by_status_output = pall_jobs_by_status_output + job_status + ' = ' + str(job_status_count) + ', '
     all_jobs_by_status_output = all_jobs_by_status_output.strip(', ') + "\n"
     pall_jobs_by_status_output = pall_jobs_by_status_output.strip(', ') + "\n"
     ci_metrics_report = ci_metrics_report + all_jobs_by_status_output
     ci_metrics_report_plain = ci_metrics_report_plain + pall_jobs_by_status_output
+
+    fragmentj7 = "\tBy Job Schedule Type: "
+    ci_metrics_report = ci_metrics_report + fragmentj7
+    ci_metrics_report_plain = ci_metrics_report_plain + fragmentj7
+    all_jobs_by_timer_output = ''
+    pall_jobs_by_timer_output = ''
+    for job_timer, job_timer_count in all_jobs_by_timer_count.items():
+        all_jobs_by_timer_output = all_jobs_by_timer_output + job_timer + ' = ' + str(job_timer_count) + ', '
+        pall_jobs_by_timer_output = pall_jobs_by_timer_output + job_timer + ' = ' + str(job_timer_count) + ', '
+    all_jobs_by_timer_output = all_jobs_by_timer_output.strip(', ') + "\n"
+    pall_jobs_by_timer_output = pall_jobs_by_timer_output.strip(', ') + "\n"
+    ci_metrics_report = ci_metrics_report + all_jobs_by_timer_output
+    ci_metrics_report_plain = ci_metrics_report_plain + pall_jobs_by_timer_output
+
+    fragmentj8 = "\tBy Job SCM Type: "
+    ci_metrics_report = ci_metrics_report + fragmentj8
+    ci_metrics_report_plain = ci_metrics_report_plain + fragmentj8
+    all_jobs_by_scm_output = ''
+    pall_jobs_by_scm_output = ''
+    for job_scm, job_scm_count in all_jobs_by_scm_count.items():
+        all_jobs_by_scm_output = all_jobs_by_scm_output + job_scm + ' = ' + str(job_scm_count) + ', '
+        pall_jobs_by_scm_output = pall_jobs_by_scm_output + job_scm + ' = ' + str(job_scm_count) + ', '
+    all_jobs_by_scm_output = all_jobs_by_scm_output.strip(', ') + "\n"
+    pall_jobs_by_scm_output = pall_jobs_by_scm_output.strip(', ') + "\n"
+    ci_metrics_report = ci_metrics_report + all_jobs_by_scm_output
+    ci_metrics_report_plain = ci_metrics_report_plain + pall_jobs_by_scm_output
+
+    fragmentj9 = "\tBy Job Sonar Quality Scan Feature: "
+    ci_metrics_report = ci_metrics_report + fragmentj9
+    ci_metrics_report_plain = ci_metrics_report_plain + fragmentj9
+    all_jobs_by_sonar_output = ''
+    pall_jobs_by_sonar_output = ''
+    for job_sonar, job_sonar_count in all_jobs_by_sonar_count.items():
+        all_jobs_by_sonar_output = all_jobs_by_sonar_output + job_sonar + ' = ' + str(job_sonar_count) + ', '
+        pall_jobs_by_sonar_output = pall_jobs_by_sonar_output + job_sonar + ' = ' + str(job_sonar_count) + ', '
+    all_jobs_by_sonar_output = all_jobs_by_sonar_output.strip(', ') + "\n"
+    pall_jobs_by_sonar_output = pall_jobs_by_sonar_output.strip(', ') + "\n"
+    ci_metrics_report = ci_metrics_report + all_jobs_by_sonar_output
+    ci_metrics_report_plain = ci_metrics_report_plain + pall_jobs_by_sonar_output
+
+    fragmentj10 = "\tBy Job AppScan Feature: "
+    ci_metrics_report = ci_metrics_report + fragmentj10
+    ci_metrics_report_plain = ci_metrics_report_plain + fragmentj10
+    all_jobs_by_appscan_output = ''
+    pall_jobs_by_appscan_output = ''
+    for job_appscan, job_appscan_count in all_jobs_by_appscan_count.items():
+        all_jobs_by_appscan_output = all_jobs_by_appscan_output + job_appscan + ' = ' + str(job_appscan_count) + ', '
+        pall_jobs_by_appscan_output = pall_jobs_by_appscan_output + job_appscan + ' = ' + str(job_appscan_count) + ', '
+    all_jobs_by_appscan_output = all_jobs_by_appscan_output.strip(', ') + "\n"
+    pall_jobs_by_appscan_output = pall_jobs_by_appscan_output.strip(', ') + "\n"
+    ci_metrics_report = ci_metrics_report + all_jobs_by_appscan_output
+    ci_metrics_report_plain = ci_metrics_report_plain + pall_jobs_by_appscan_output
 
     ci_metrics_report = ci_metrics_report + '*' * 150 + "\n"
     ci_metrics_report_plain = ci_metrics_report_plain + '*' * 150 + "\n"
