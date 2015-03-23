@@ -352,8 +352,8 @@ def generate_ci_metrics_report(run_date, run_timestamp, all_jobs, total_num_of_j
     # print('By CDD', all_jobs_by_cdd_count)
     today = datetime.date.today()
     stoday = today.strftime('%Y-%m-%d')
-    fragmentj3 = "Total Number of Unique Jobs in CI: " + green(total_num_of_jobs) + " (as of " + stoday + ")\n"
-    pfragmentj3 = "Total Number of Unique Jobs in CI: " + str(total_num_of_jobs) + " (as of " + stoday + ")\n"
+    fragmentj3 = "Total Number of Unique Jobs in CI: " + green(total_num_of_jobs) + "\n"
+    pfragmentj3 = "Total Number of Unique Jobs in CI: " + str(total_num_of_jobs) + "\n"
     ci_metrics_report = ci_metrics_report + fragmentj3
     ci_metrics_report_plain = ci_metrics_report_plain + pfragmentj3
 
