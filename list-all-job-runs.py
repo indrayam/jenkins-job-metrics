@@ -363,15 +363,23 @@ def generate_ci_metrics_report(run_date, run_timestamp, all_jobs, total_num_of_j
     all_jobs_by_org_output = '\t\t'
     pall_jobs_by_org_output = '\t\t'
     org_count_index = 0
-    for job_org, job_org_count in all_jobs_by_org_count.items():
+    for job_org, job_org_count in sorted(all_jobs_by_org_count.iteritems(), key=lambda (k,v): (v, k), reverse=True):
             if org_count_index < 3:
-                all_jobs_by_org_output = all_jobs_by_org_output + job_org + ' = ' + str(job_org_count) + ', '
-                pall_jobs_by_org_output = pall_jobs_by_org_output + job_org + ' = ' + str(job_org_count) + ', '
+                if job_org_count > 50:
+                    all_jobs_by_org_output = all_jobs_by_org_output + job_org + ' = ' + green(job_org_count) + ', '
+                    pall_jobs_by_org_output = pall_jobs_by_org_output + job_org + ' = ' + str(job_org_count) + ', '
+                else:
+                    all_jobs_by_org_output = all_jobs_by_org_output + job_org + ' = ' + str(job_org_count) + ', '
+                    pall_jobs_by_org_output = pall_jobs_by_org_output + job_org + ' = ' + str(job_org_count) + ', '
                 org_count_index = org_count_index + 1
             else:
                 org_count_index = 0
-                all_jobs_by_org_output = all_jobs_by_org_output.strip(', ') + "\n\t\t" + job_org + ' = ' + str(job_org_count) + ', '
-                pall_jobs_by_org_output = pall_jobs_by_org_output.strip(', ') + "\n\t\t" + job_org + ' = ' + str(job_org_count) + ', '
+                if job_org_count > 50:
+                    all_jobs_by_org_output = all_jobs_by_org_output.strip(', ') + "\n\t\t" + job_org + ' = ' + green(job_org_count) + ', '
+                    pall_jobs_by_org_output = pall_jobs_by_org_output.strip(', ') + "\n\t\t" + job_org + ' = ' + str(job_org_count) + ', '
+                else:
+                    all_jobs_by_org_output = all_jobs_by_org_output.strip(', ') + "\n\t\t" + job_org + ' = ' + str(job_org_count) + ', '
+                    pall_jobs_by_org_output = pall_jobs_by_org_output.strip(', ') + "\n\t\t" + job_org + ' = ' + str(job_org_count) + ', '                    
                 org_count_index = org_count_index + 1
     all_jobs_by_org_output = all_jobs_by_org_output.strip(', ') + "\n"
     pall_jobs_by_org_output = pall_jobs_by_org_output.strip(', ') + "\n"
