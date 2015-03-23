@@ -337,7 +337,7 @@ def generate_ci_metrics_report(run_date, run_timestamp, all_jobs, total_num_of_j
     pall_jobs_by_org_output = '\t\t'
     org_count_index = 0
     for job_org, job_org_count in all_jobs_by_org_count.items():
-        if job_org_count > 100:
+        if job_org_count > 50:
             if org_count_index < 3:
                 all_jobs_by_org_output = all_jobs_by_org_output + job_org + ' = ' + str(job_org_count) + ', '
                 pall_jobs_by_type_output = pall_jobs_by_org_output + job_org + ' = ' + str(job_org_count) + ', '
