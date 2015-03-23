@@ -235,7 +235,7 @@ def process_build_xml_file_list(run_date, run_timestamp, all_runs_file, jobs_out
 
 
 def generate_ci_metrics_report(run_date, run_timestamp, all_jobs, total_num_of_job_runs, nodes, job_runs, job_results, job_runs_by_org, total_num_of_jobs_by_hr):
-    print(all_jobs)
+    # print(all_jobs)
 
     run_date_obj = datetime.datetime.strptime(run_date, '%Y-%m-%d').date()
     jobs_summary_report_filename = get_summary_report_filename(jobs_output_data_folder, run_date, run_timestamp)
@@ -313,15 +313,15 @@ def generate_ci_metrics_report(run_date, run_timestamp, all_jobs, total_num_of_j
         else:
             all_jobs_by_cdd_count[job_details['cdd']] = all_jobs_by_cdd_count[job_details['cdd']] + 1
 
-    print('By Org', all_jobs_by_org_count)
-    print('By Type', all_jobs_by_type_count)
-    print('By Status', all_jobs_by_status_count)
-    print('By Timer', all_jobs_by_timer_count)
-    print('By SCM', all_jobs_by_scm_count)
-    print('By Artifactory', all_jobs_by_artifactory_count)
-    print('By Sonar', all_jobs_by_sonar_count)
-    print('By Appscan', all_jobs_by_appscan_count)
-    print('By CDD', all_jobs_by_cdd_count)
+    # print('By Org', all_jobs_by_org_count)
+    # print('By Type', all_jobs_by_type_count)
+    # print('By Status', all_jobs_by_status_count)
+    # print('By Timer', all_jobs_by_timer_count)
+    # print('By SCM', all_jobs_by_scm_count)
+    # print('By Artifactory', all_jobs_by_artifactory_count)
+    # print('By Sonar', all_jobs_by_sonar_count)
+    # print('By Appscan', all_jobs_by_appscan_count)
+    # print('By CDD', all_jobs_by_cdd_count)
     today = datetime.date.today()
     stoday = today.strftime('%Y-%m-%d')
     fragmentj3 = "Total Number of Unique Jobs in CI: " + green(total_num_of_jobs) + " (as of " + stoday + ")\n"
@@ -329,18 +329,31 @@ def generate_ci_metrics_report(run_date, run_timestamp, all_jobs, total_num_of_j
     ci_metrics_report = ci_metrics_report + fragmentj3
     ci_metrics_report_plain = ci_metrics_report_plain + pfragmentj3
 
-    fragmentj4 = "\tTotal Number of Jobs By Type: "
+    fragmentj4 = "\tTotal Number of Jobs By Org: "
     ci_metrics_report = ci_metrics_report + fragmentj4
     ci_metrics_report_plain = ci_metrics_report_plain + fragmentj4
-    all_job_by_type_output = ''
-    pall_job_by_type_output = ''
+    all_jobs_by_org_output = ''
+    pall_jobs_by_org_output = ''
+    for job_org, job_org_count in all_jobs_by_org_count.items():
+        all_jobs_by_org_output = all_jobs_by_org_output + job_org + ' = ' + str(job_org_count) + ', '
+        pall_jobs_by_type_output = pall_jobs_by_org_output + job_org + ' = ' + str(job_org_count) + ', '
+    all_jobs_by_org_output = all_jobs_by_org_output.strip(', ') + "\n"
+    pall_jobs_by_org_output = pall_jobs_by_org_output.strip(', ') + "\n"
+    ci_metrics_report = ci_metrics_report + all_jobs_by_org_output
+    ci_metrics_report_plain = ci_metrics_report_plain + pall_jobs_by_org_output
+
+    fragmentj5 = "\tTotal Number of Jobs By Type: "
+    ci_metrics_report = ci_metrics_report + fragmentj5
+    ci_metrics_report_plain = ci_metrics_report_plain + fragmentj5
+    all_jobs_by_type_output = ''
+    pall_jobs_by_type_output = ''
     for job_type, job_type_count in all_jobs_by_type_count.items():
-        all_job_by_type_output = all_job_by_type_output + job_type + ' = ' + str(job_type_count) + ', '
-        pall_job_by_type_output = pall_job_by_type_output + job_type + ' = ' + str(job_type_count) + ', '
-    all_job_by_type_output = all_job_by_type_output.strip(', ') + "\n"
-    pall_job_by_type_output = pall_job_by_type_output.strip(', ') + "\n"
-    ci_metrics_report = ci_metrics_report + all_job_by_type_output
-    ci_metrics_report_plain = ci_metrics_report_plain + pall_job_by_type_output
+        all_jobs_by_type_output = all_jobs_by_type_output + job_type + ' = ' + str(job_type_count) + ', '
+        pall_jobs_by_type_output = pall_jobs_by_type_output + job_type + ' = ' + str(job_type_count) + ', '
+    all_jobs_by_type_output = all_jobs_by_type_output.strip(', ') + "\n"
+    pall_jobs_by_type_output = pall_jobs_by_type_output.strip(', ') + "\n"
+    ci_metrics_report = ci_metrics_report + all_jobs_by_type_output
+    ci_metrics_report_plain = ci_metrics_report_plain + pall_jobs_by_type_output
 
     ci_metrics_report = ci_metrics_report + '*' * 150 + "\n"
     ci_metrics_report_plain = ci_metrics_report_plain + '*' * 150 + "\n"
