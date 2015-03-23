@@ -35,7 +35,7 @@ def process_config_xml_file_list(run_date, run_timestamp, all_jobs_file, jobs_ou
             job_key, job_name, job_basics_status = get_job_basics(config_xml_file_name)
             job_org_key = job_key.split(':')[0]
             if job_basics_status == '_ERR_':
-                audit_job_log_file.write('_ERR_: File Path Parsing Error ' + build_xml_file_name + '\n')
+                audit_job_log_file.write('_ERR_: File Path Parsing Error ' + config_xml_file_name + '\n')
                 continue
             audit_job_log_file.write(job_key + '|' + job_name + '\n')
             # print('job_key', job_key, 'job_name', job_name)
@@ -52,11 +52,34 @@ def process_config_xml_file_list(run_date, run_timestamp, all_jobs_file, jobs_ou
             jobs[job_key]['org'] = job_org_key
 
             # Setup Type of the Job
+            # But first see if you can find PLSQL fragment
             tree = ET.parse(config_xml_file_name)
             root = tree.getroot()
+            job_sonar_properties_text = "Undef"
+            for artifact in root.iter('hudson.plugins.sonar.SonarRunnerBuilder'):
+                for child in artifact:
+                    if child.tag == 'properties':
+                        job_sonar_properties_text = child.text
+                        if job_sonar_properties_text is not None:
+                            break
+
+            # And Ant fragment
+            job_anttask_buildfile_text = "Undef"
+            job_anttask_fragment = False
+            for anttask in root.iter('hudson.tasks.Ant'):
+                for child in anttask:
+                    if child.tag == 'buildFile':
+                        job_anttask_buildfile_text = child.text
+                        if job_anttask_buildfile_text is not None:
+                            job_anttask_fragment = True
+
             job_program_type = "Undef"
             if root.tag == 'project':
                     job_program_type = "Freestyle"
+                    if re.search(r'.*plsql.*', job_sonar_properties_text, re.I):
+                        job_program_type = job_program_type + " (w PLSQL)"
+                    if job_anttask_fragment:
+                        job_program_type = job_program_type + " (w Java/Ant)"
             elif root.tag == 'maven2-moduleset':
                 job_program_type = "Java"
             jobs[job_key]['type'] = job_program_type
@@ -93,6 +116,8 @@ def process_config_xml_file_list(run_date, run_timestamp, all_jobs_file, jobs_ou
                 scm_feature = "Subversion"
             elif re.match(r'.*GitSCM$', scm_class, re.I) and scm_class is not None:
                 scm_feature = "Git"
+            elif re.match(r'.*NullSCM$', scm_class, re.I) and scm_class is not None:
+                scm_feature = "No SCM"
             jobs[job_key]['scm'] = scm_feature
 
             # Setup Artifactory Configuration of the Job
@@ -688,7 +713,8 @@ def process_build_xml_file(build_xml_file_name):
 def get_job_run_basics(job_run):
     job_key, job_name, job_date, job_time_hr, job_time_min, job_run_basics_status = "Undef", "Undef", "Undef", "Undef", "Undef", "_ERR_"
     line_tokens = job_run.split('/')
-    if line_tokens[-3] == 'builds' and line_tokens[-5] != 'modules':
+    inside_modules = is_inside_modules(job_run) 
+    if line_tokens[-3] == 'builds' and not inside_modules:
         job_run_basics_status = "SUCCESS"
         job_key = get_job_key(line_tokens[:-3])
         job_name = line_tokens[-4]
@@ -698,6 +724,22 @@ def get_job_run_basics(job_run):
         job_time_hr = job_time_tokens[0]
         job_time_min = job_time_tokens[1]
     return job_key, job_name, job_date, job_time_hr, job_time_min, job_run_basics_status
+
+
+def is_inside_modules(job_run):
+    inside_modules = False
+    line_tokens = job_run.split('/')
+    modules_folder_path = ''
+    # print(job_run)
+    if line_tokens[-5] == 'modules':
+        modules_folder_path = '/'.join(line_tokens[:-5])
+        modules_folder_path = modules_folder_path + '/builds'
+        # print("I am in")
+        if os.path.exists(modules_folder_path):
+            # print("I am really inside")
+            inside_modules = True
+    # print('[' + modules_folder_path + ']')
+    return inside_modules
 
 
 def get_job_key(line_tokens):
