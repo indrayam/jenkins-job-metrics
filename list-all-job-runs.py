@@ -66,7 +66,7 @@ def process_config_xml_file_list(run_date, run_timestamp, all_jobs_file, jobs_ou
             for timer in root.iter('hudson.triggers.TimerTrigger'):
                 job_timer_spec = timer[0].text
             spec_pattern = re.compile(r'#.*', re.I)
-            if job_timer_spec == "Undef":
+            if job_timer_spec == "Undef" or job_timer_spec is None:
                 job_timer_spec = "No"
             else:
                 if spec_pattern.match(job_timer_spec):
@@ -330,20 +330,29 @@ def generate_ci_metrics_report(run_date, run_timestamp, all_jobs, total_num_of_j
     ci_metrics_report = ci_metrics_report + fragmentj3
     ci_metrics_report_plain = ci_metrics_report_plain + pfragmentj3
 
-    fragmentj4 = "\tTotal Number of Jobs By Org: "
+    fragmentj4 = "\tBy Org (Number of Jobs > 100):\n"
     ci_metrics_report = ci_metrics_report + fragmentj4
     ci_metrics_report_plain = ci_metrics_report_plain + fragmentj4
-    all_jobs_by_org_output = ''
-    pall_jobs_by_org_output = ''
+    all_jobs_by_org_output = '\t\t'
+    pall_jobs_by_org_output = '\t\t'
+    org_count_index = 0
     for job_org, job_org_count in all_jobs_by_org_count.items():
-        all_jobs_by_org_output = all_jobs_by_org_output + job_org + ' = ' + str(job_org_count) + ', '
-        pall_jobs_by_type_output = pall_jobs_by_org_output + job_org + ' = ' + str(job_org_count) + ', '
+        if job_org_count > 100:
+            if org_count_index < 3:
+                all_jobs_by_org_output = all_jobs_by_org_output + job_org + ' = ' + str(job_org_count) + ', '
+                pall_jobs_by_type_output = pall_jobs_by_org_output + job_org + ' = ' + str(job_org_count) + ', '
+                org_count_index = org_count_index + 1
+            else:
+                org_count_index = 0
+                all_jobs_by_org_output = all_jobs_by_org_output.strip(', ') + "\n\t\t" + job_org + ' = ' + str(job_org_count) + ', '
+                pall_jobs_by_type_output = pall_jobs_by_org_output.strip(', ') + "\n\t\t" + job_org + ' = ' + str(job_org_count) + ', '
+                org_count_index = org_count_index + 1
     all_jobs_by_org_output = all_jobs_by_org_output.strip(', ') + "\n"
     pall_jobs_by_org_output = pall_jobs_by_org_output.strip(', ') + "\n"
     ci_metrics_report = ci_metrics_report + all_jobs_by_org_output
     ci_metrics_report_plain = ci_metrics_report_plain + pall_jobs_by_org_output
 
-    fragmentj5 = "\tTotal Number of Jobs By Type: "
+    fragmentj5 = "\tBy Type: "
     ci_metrics_report = ci_metrics_report + fragmentj5
     ci_metrics_report_plain = ci_metrics_report_plain + fragmentj5
     all_jobs_by_type_output = ''
