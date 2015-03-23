@@ -89,9 +89,9 @@ def process_config_xml_file_list(run_date, run_timestamp, all_jobs_file, jobs_ou
             scm_feature = "Undef"
             for scm in root.iter('scm'):
                 scm_class = scm.get('class')
-            if re.match(r'.*SubversionSCM$', scm_class, re.I):
+            if re.match(r'.*SubversionSCM$', scm_class, re.I) and scm_class is not None:
                 scm_feature = "Subversion"
-            elif re.match(r'.*GitSCM$', scm_class, re.I):
+            elif re.match(r'.*GitSCM$', scm_class, re.I) and scm_class is not None:
                 scm_feature = "Git"
             jobs[job_key]['scm'] = scm_feature
 
@@ -114,15 +114,16 @@ def process_config_xml_file_list(run_date, run_timestamp, all_jobs_file, jobs_ou
             # Setup Appscan Configuration of the Job
             appscan_feature = "Disabled"
             for scan in root.iter('goals'):
-                if re.search(r'.*appscan.*', scan.text, re.I):
-                    appscan_feature = "Enabled"
+                if scan.text is not None:
+                    if re.search(r'.*appscan.*', scan.text, re.I):
+                        appscan_feature = "Enabled"
             jobs[job_key]['appscan'] = appscan_feature
 
             # Setup CDD Configuration of the Job
             cdd_feature = "Disabled"
             for cdd in root.iter('hudson.plugins.postbuildtask.TaskProperties'):
                 for child in cdd:
-                    if child.tag == 'script':
+                    if child.tag == 'script' and child.text is not None:
                         if re.search(r'CIMVService', child.text, re.I):
                             cdd_feature = "Enabled"
             jobs[job_key]['cdd'] = cdd_feature
