@@ -14,7 +14,7 @@ from color import red, green, yellow, blue, magenta, cyan, white
 
 
 def generate_config_xml_file_list(top_level_folder_path, all_jobs_file, run_date):
-    cmd = 'ag -l --depth 50 --xml \"<project>|</maven2-moduleset>\" ' + top_level_folder_path
+    cmd = 'ag -l --depth 50 -G \"config.xml\" \"<project>|</maven2-moduleset>\" ' + top_level_folder_path
     args = shlex.split(cmd)
     with open(all_jobs_file, 'w') as out:
         p2 = Popen(args, stdout=out, stderr=PIPE, stdin=PIPE, cwd=os.getcwd())
