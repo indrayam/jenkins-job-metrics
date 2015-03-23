@@ -7,6 +7,7 @@ import sys
 import os
 import glob
 import smtplib
+import re
 from subprocess import Popen, PIPE
 import xml.etree.ElementTree as ET
 from color import red, green, yellow, blue, magenta, cyan, white
@@ -32,6 +33,7 @@ def process_config_xml_file_list(run_date, run_timestamp, all_jobs_file, jobs_ou
         for line in file:
             config_xml_file_name = line.strip()
             job_key, job_name, job_basics_status = get_job_basics(config_xml_file_name)
+            job_org_key = job_key.split(':')[0]
             if job_basics_status == '_ERR_':
                 audit_job_log_file.write('_ERR_: File Path Parsing Error ' + build_xml_file_name + '\n')
                 continue
@@ -40,7 +42,90 @@ def process_config_xml_file_list(run_date, run_timestamp, all_jobs_file, jobs_ou
             
             # Jobs Dictionary of Dictionary
             if job_key not in jobs:
-                jobs[job_key] = { 'name': job_name}
+                # Set up Name of the Job
+                jobs[job_key] = {}
+            
+            # Setup Name of the Job
+            jobs[job_key]['name'] = job_name
+
+            # Setup Org of the Job
+            jobs[job_key]['org'] = job_org_key
+
+            # Setup Type of the Job
+            tree = ET.parse(config_xml_file_name)
+            root = tree.getroot()
+            job_program_type = "Undef"
+            if root.tag == 'project':
+                    job_program_type = "Freestyle"
+            elif root.tag == 'maven2-moduleset':
+                job_program_type = "Java"
+            jobs[job_key]['type'] = job_program_type
+
+            # Setup Scheduled vs Unscheduled Type of the Job
+            job_timer_spec = "Undef"
+            for timer in root.iter('hudson.triggers.TimerTrigger'):
+                job_timer_spec = timer[0].text
+            spec_pattern = re.compile(r'#.*', re.I)
+            if job_timer_spec == "Undef":
+                job_timer_spec = "No"
+            else:
+                if spec_pattern.match(job_timer_spec):
+                    job_timer_spec = "Disabled"
+                else:
+                    job_timer_spec = "Yes"
+            jobs[job_key]['timer'] = job_timer_spec
+
+            # Setup Enabled vs Disabled Status of the Job
+            job_status = "Undef"
+            for status in root.iter('disabled'):
+                job_status = status.text
+            if re.match(r'false', job_status, re.I):
+                job_status = "Enabled"
+            elif re.match(r'true', job_status, re.I):
+                job_status = "Disabled"
+            jobs[job_key]['status'] = job_timer_spec
+
+            # Setup SCM Status of the Job
+            scm_feature = "Undef"
+            for scm in root.iter('scm'):
+                scm_class = scm.get('class')
+            if re.match(r'.*SubversionSCM$', scm_class, re.I):
+                scm_feature = "Subversion"
+            elif re.match(r'.*GitSCM$', scm_class, re.I):
+                scm_feature = "Git"
+            jobs[job_key]['scm'] = scm_feature
+
+            # Setup Artifactory Configuration of the Job
+            artifact_feature = "Undef"
+            for artifact in root.iter('org.jfrog.hudson.ArtifactoryRedeployPublisher'):
+                artifact_feature = "Enabled"
+            if artifact_feature == "Undef":
+                artifact_feature = "Disabled"
+            jobs[job_key]['artifactory'] = artifact_feature
+
+            # Setup Sonar Quality Scan Configuration of the Job
+            sonar_feature = "Undef"
+            for artifact in root.iter('hudson.plugins.sonar.SonarRunnerBuilder'):
+                sonar_feature = "Enabled"
+            if sonar_feature == "Undef":
+                sonar_feature = "Disabled"
+            jobs[job_key]['sonar'] = sonar_feature
+
+            # Setup Appscan Configuration of the Job
+            appscan_feature = "Disabled"
+            for scan in root.iter('goals'):
+                if re.search(r'.*appscan.*', scan.text, re.I):
+                    appscan_feature = "Enabled"
+            jobs[job_key]['appscan'] = appscan_feature
+
+            # Setup CDD Configuration of the Job
+            cdd_feature = "Disabled"
+            for cdd in root.iter('hudson.plugins.postbuildtask.TaskProperties'):
+                for child in cdd:
+                    if child.tag == 'script':
+                        if re.search(r'CIMVService', child.text, re.I):
+                            cdd_feature = "Enabled"
+            jobs[job_key]['cdd'] = cdd_feature
 
     return jobs 
 
@@ -150,6 +235,8 @@ def process_build_xml_file_list(run_date, run_timestamp, all_runs_file, jobs_out
 
 
 def generate_ci_metrics_report(run_date, run_timestamp, all_jobs, total_num_of_job_runs, nodes, job_runs, job_results, job_runs_by_org, total_num_of_jobs_by_hr):
+    print(all_jobs)
+
     run_date_obj = datetime.datetime.strptime(run_date, '%Y-%m-%d').date()
     jobs_summary_report_filename = get_summary_report_filename(jobs_output_data_folder, run_date, run_timestamp)
     summary = open(jobs_summary_report_filename, 'w')
@@ -157,8 +244,115 @@ def generate_ci_metrics_report(run_date, run_timestamp, all_jobs, total_num_of_j
     ci_metrics_report = '*' * 150 + "\n"
     ci_metrics_report_plain = ci_metrics_report
 
-    fragment1 = "Date of CI Metrics Report Run: " + yellow(run_date) + "\n"
-    pfragment1 = "Date of CI Metrics Report Run: " + str(run_date) + "\n"
+    today = datetime.date.today()
+    stoday = today.strftime('%Y-%m-%d')
+    fragmentj1 = "Date of CI Job Metrics Report: " + yellow(stoday) + "\n"
+    pfragmentj1 = "Date of CI Job Metrics Report: " + str(stoday) + "\n"
+    ci_metrics_report = ci_metrics_report + fragmentj1
+    ci_metrics_report_plain = ci_metrics_report_plain + pfragmentj1
+
+    fragmentj2 = "Day of the week: " + today.strftime("%A") + "\n"
+    ci_metrics_report = ci_metrics_report + fragmentj2
+    ci_metrics_report_plain = ci_metrics_report_plain + fragmentj2
+
+    total_num_of_jobs = 0
+    all_jobs_by_org_count = {}
+    all_jobs_by_type_count = {}
+    all_jobs_by_status_count = {}
+    all_jobs_by_timer_count = {}
+    all_jobs_by_scm_count = {}
+    all_jobs_by_artifactory_count = {}
+    all_jobs_by_sonar_count = {}
+    all_jobs_by_appscan_count = {}
+    all_jobs_by_cdd_count = {}
+    for job_key, job_details in all_jobs.items():
+        total_num_of_jobs = total_num_of_jobs + 1 
+
+        if job_details['org'] not in all_jobs_by_org_count:
+            all_jobs_by_org_count[job_details['org']] = 1
+        else:
+            all_jobs_by_org_count[job_details['org']] = all_jobs_by_org_count[job_details['org']] + 1
+
+        if job_details['type'] not in all_jobs_by_type_count:
+            all_jobs_by_type_count[job_details['type']] = 1
+        else:
+            all_jobs_by_type_count[job_details['type']] = all_jobs_by_type_count[job_details['type']] + 1
+
+        if job_details['status'] not in all_jobs_by_status_count:
+            all_jobs_by_status_count[job_details['status']] = 1
+        else:
+            all_jobs_by_status_count[job_details['status']] = all_jobs_by_status_count[job_details['status']] + 1
+
+        if job_details['timer'] not in all_jobs_by_timer_count:
+            all_jobs_by_timer_count[job_details['timer']] = 1
+        else:
+            all_jobs_by_timer_count[job_details['timer']] = all_jobs_by_timer_count[job_details['timer']] + 1
+
+        if job_details['scm'] not in all_jobs_by_scm_count:
+            all_jobs_by_scm_count[job_details['scm']] = 1
+        else: 
+            all_jobs_by_scm_count[job_details['scm']] = all_jobs_by_scm_count[job_details['scm']] + 1
+
+        if job_details['artifactory'] not in all_jobs_by_artifactory_count:
+            all_jobs_by_artifactory_count[job_details['artifactory']] = 1
+        else: 
+            all_jobs_by_artifactory_count[job_details['artifactory']] = all_jobs_by_artifactory_count[job_details['artifactory']] + 1
+
+        if job_details['sonar'] not in all_jobs_by_sonar_count:
+            all_jobs_by_sonar_count[job_details['sonar']] = 1
+        else: 
+            all_jobs_by_sonar_count[job_details['sonar']] = all_jobs_by_sonar_count[job_details['sonar']] + 1
+
+        if job_details['appscan'] not in all_jobs_by_appscan_count:
+            all_jobs_by_appscan_count[job_details['appscan']] = 1
+        else: 
+            all_jobs_by_appscan_count[job_details['appscan']] = all_jobs_by_appscan_count[job_details['appscan']] + 1
+
+        if job_details['cdd'] not in all_jobs_by_cdd_count:
+            all_jobs_by_cdd_count[job_details['cdd']] = 1
+        else:
+            all_jobs_by_cdd_count[job_details['cdd']] = all_jobs_by_cdd_count[job_details['cdd']] + 1
+
+    print('By Org', all_jobs_by_org_count)
+    print('By Type', all_jobs_by_type_count)
+    print('By Status', all_jobs_by_status_count)
+    print('By Timer', all_jobs_by_timer_count)
+    print('By SCM', all_jobs_by_scm_count)
+    print('By Artifactory', all_jobs_by_artifactory_count)
+    print('By Sonar', all_jobs_by_sonar_count)
+    print('By Appscan', all_jobs_by_appscan_count)
+    print('By CDD', all_jobs_by_cdd_count)
+    today = datetime.date.today()
+    stoday = today.strftime('%Y-%m-%d')
+    fragmentj3 = "Total Number of Unique Jobs in CI: " + green(total_num_of_jobs) + " (as of " + stoday + ")\n"
+    pfragmentj3 = "Total Number of Unique Jobs in CI: " + str(total_num_of_jobs) + " (as of " + stoday + ")\n"
+    ci_metrics_report = ci_metrics_report + fragmentj3
+    ci_metrics_report_plain = ci_metrics_report_plain + pfragmentj3
+
+    fragmentj4 = "\tTotal Number of Jobs By Type: "
+    ci_metrics_report = ci_metrics_report + fragmentj4
+    ci_metrics_report_plain = ci_metrics_report_plain + fragmentj4
+    all_job_by_type_output = ''
+    pall_job_by_type_output = ''
+    for job_type, job_type_count in all_jobs_by_type_count.items():
+        all_job_by_type_output = all_job_by_type_output + job_type + ' = ' + str(job_type_count) + ', '
+        pall_job_by_type_output = pall_job_by_type_output + job_type + ' = ' + str(job_type_count) + ', '
+    all_job_by_type_output = all_job_by_type_output.strip(', ') + "\n"
+    pall_job_by_type_output = pall_job_by_type_output.strip(', ') + "\n"
+    ci_metrics_report = ci_metrics_report + all_job_by_type_output
+    ci_metrics_report_plain = ci_metrics_report_plain + pall_job_by_type_output
+
+    ci_metrics_report = ci_metrics_report + '*' * 150 + "\n"
+    ci_metrics_report_plain = ci_metrics_report_plain + '*' * 150 + "\n"
+
+    ci_metrics_report = ci_metrics_report + "\n"
+    ci_metrics_report_plain = ci_metrics_report_plain + "\n"
+
+    ci_metrics_report = ci_metrics_report + '*' * 150 + "\n"
+    ci_metrics_report_plain = ci_metrics_report_plain + '*' * 150 + "\n"
+
+    fragment1 = "Date of CI Job Run Metrics Report: " + yellow(run_date) + "\n"
+    pfragment1 = "Date of CI Job Run Metrics Report: " + str(run_date) + "\n"
     ci_metrics_report = ci_metrics_report + fragment1
     ci_metrics_report_plain = ci_metrics_report_plain + pfragment1
 
@@ -166,21 +360,10 @@ def generate_ci_metrics_report(run_date, run_timestamp, all_jobs, total_num_of_j
     ci_metrics_report = ci_metrics_report + fragment2
     ci_metrics_report_plain = ci_metrics_report_plain + fragment2
 
-    total_num_of_jobs = 0
-    for job_key, job_details in all_jobs.items():
-        total_num_of_jobs = total_num_of_jobs + 1
-
-    today = datetime.date.today()
-    stoday = today.strftime('%Y-%m-%d')
-    fragment3a = "Total Number of Unique Jobs in CI: " + green(total_num_of_jobs) + " (as of " + stoday + ")\n"
-    pfragment3a = "Total Number of Unique Jobs in CI: " + str(total_num_of_jobs) + " (as of " + stoday + ")\n"
-    ci_metrics_report = ci_metrics_report + fragment3a
-    ci_metrics_report_plain = ci_metrics_report_plain + pfragment3a
-
-    fragment3b = "Total Number of Job Runs: " + green(total_num_of_job_runs) + "\n"
-    pfragment3b = "Total Number of Job Runs: " + str(total_num_of_job_runs) + "\n"
-    ci_metrics_report = ci_metrics_report + fragment3b
-    ci_metrics_report_plain = ci_metrics_report_plain + pfragment3b
+    fragment3 = "Total Number of Job Runs: " + green(total_num_of_job_runs) + "\n"
+    pfragment3 = "Total Number of Job Runs: " + str(total_num_of_job_runs) + "\n"
+    ci_metrics_report = ci_metrics_report + fragment3
+    ci_metrics_report_plain = ci_metrics_report_plain + pfragment3
     
     fragment4 = "\tJob Run Count By Build Status: "
     ci_metrics_report = ci_metrics_report + fragment4
