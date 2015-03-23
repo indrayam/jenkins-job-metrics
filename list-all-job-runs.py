@@ -62,6 +62,8 @@ def process_config_xml_file_list(run_date, run_timestamp, all_jobs_file, jobs_ou
                         job_sonar_properties_text = child.text
                         if job_sonar_properties_text is not None:
                             break
+                        else:
+                            job_sonar_properties_text = ''
 
             # And Ant fragment
             job_anttask_buildfile_text = "Undef"
