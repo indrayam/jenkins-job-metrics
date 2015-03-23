@@ -347,9 +347,6 @@ def generate_ci_metrics_report(run_date, run_timestamp, all_jobs, total_num_of_j
                 all_jobs_by_org_output = all_jobs_by_org_output.strip(', ') + "\n\t\t" + job_org + ' = ' + str(job_org_count) + ', '
                 pall_jobs_by_type_output = pall_jobs_by_org_output.strip(', ') + "\n\t\t" + job_org + ' = ' + str(job_org_count) + ', '
                 org_count_index = org_count_index + 1
-        else:
-            all_jobs_by_org_output = all_jobs_by_org_output + 'NA'
-            pall_jobs_by_org_output = all_jobs_by_org_output + 'NA'
     all_jobs_by_org_output = all_jobs_by_org_output.strip(', ') + "\n"
     pall_jobs_by_org_output = pall_jobs_by_org_output.strip(', ') + "\n"
     ci_metrics_report = ci_metrics_report + all_jobs_by_org_output
