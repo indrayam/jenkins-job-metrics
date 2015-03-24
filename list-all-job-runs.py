@@ -11,6 +11,8 @@ import re
 from subprocess import Popen, PIPE
 import xml.etree.ElementTree as ET
 from color import red, green, yellow, blue, magenta, cyan, white
+from email.mime.multipart import MIMEMultipart
+from email.mime.text import MIMEText
 
 
 def generate_config_xml_file_list(top_level_folder_path, all_jobs_file, run_date):
@@ -261,27 +263,66 @@ def process_build_xml_file_list(run_date, run_timestamp, all_runs_file, jobs_out
     # Generate summary report
     generate_ci_metrics_report(run_date, run_timestamp, all_jobs, total_num_of_job_runs, nodes, job_runs, job_results, job_runs_by_org, total_num_of_jobs_by_hr)
 
+def html_header(run_date):
+    header = """\
+<html>
+<head>
+<title>CI Job Run Summary Report</title>
+<style>
+pre {
+    font-family: calibri, arial, sans-serif;
+    font-size: 1.1em;
+    border-style: dashed;
+    border-width: 1px;
+    background-color: #ececec;
+    border-color: gray;
+    overflow: auto;
+}
+h1 {
+    font-family: cambria, serif;
+    font-size: 1.5em;
+    color: black;   
+}
+</style>
+</head>
+<body>
+<h1>CI Job Metrics for """
+    header = header + run_date + "</h1><pre>\n"
+    return header
+
+
+def html_footer():
+    footer = """\
+</body>
+</html>
+"""
+    return footer
+
 
 def generate_ci_metrics_report(run_date, run_timestamp, all_jobs, total_num_of_job_runs, nodes, job_runs, job_results, job_runs_by_org, total_num_of_jobs_by_hr):
     # print(all_jobs)
 
     run_date_obj = datetime.datetime.strptime(run_date, '%Y-%m-%d').date()
     jobs_summary_report_filename = get_summary_report_filename(jobs_output_data_folder, run_date, run_timestamp)
-    summary = open(jobs_summary_report_filename, 'w')
 
     ci_metrics_report = '*' * 150 + "\n"
     ci_metrics_report_plain = ci_metrics_report
 
     today = datetime.date.today()
     stoday = today.strftime('%Y-%m-%d')
+    ci_metrics_report_html = html_header(stoday)
     fragmentj1 = "Date of CI Job Metrics Report: " + yellow(stoday) + "\n"
     pfragmentj1 = "Date of CI Job Metrics Report: " + str(stoday) + "\n"
+    hfragmentj1 = "<strong style=\"color: navy\">Date of CI Job Metrics Report:</strong> " + "<strong style=\"color: blue\">" + str(stoday) + "</strong>" + "\n"
     ci_metrics_report = ci_metrics_report + fragmentj1
     ci_metrics_report_plain = ci_metrics_report_plain + pfragmentj1
+    ci_metrics_report_html = ci_metrics_report_html + hfragmentj1
 
     fragmentj2 = "Day of the week: " + today.strftime("%A") + "\n"
     ci_metrics_report = ci_metrics_report + fragmentj2
+    hfragmentj2 = "<strong style=\"color: navy\">Day of the week:</strong> " + today.strftime("%A") + "\n"
     ci_metrics_report_plain = ci_metrics_report_plain + fragmentj2
+    ci_metrics_report_html = ci_metrics_report_html + hfragmentj2
 
     total_num_of_jobs = 0
     all_jobs_by_org_count = {}
@@ -354,211 +395,294 @@ def generate_ci_metrics_report(run_date, run_timestamp, all_jobs, total_num_of_j
     stoday = today.strftime('%Y-%m-%d')
     fragmentj3 = "Total Number of Unique Jobs in CI: " + green(total_num_of_jobs) + "\n"
     pfragmentj3 = "Total Number of Unique Jobs in CI: " + str(total_num_of_jobs) + "\n"
+    hfragmentj3 = "<strong style=\"color: navy\">Total Number of Unique Jobs in CI:</strong> " + "<strong style=\"color: green\">" + str(total_num_of_jobs) + "</strong>" + "\n"
     ci_metrics_report = ci_metrics_report + fragmentj3
     ci_metrics_report_plain = ci_metrics_report_plain + pfragmentj3
+    ci_metrics_report_html = ci_metrics_report_html + hfragmentj3
 
     fragmentj4 = "\tBy Job Org:\n"
+    hfragmentj4 = "\t<span style=\" color: maroon\">By Job Org:</span>\n"
     ci_metrics_report = ci_metrics_report + fragmentj4
     ci_metrics_report_plain = ci_metrics_report_plain + fragmentj4
+    ci_metrics_report_html = ci_metrics_report_html + hfragmentj4
     all_jobs_by_org_output = '\t\t'
     pall_jobs_by_org_output = '\t\t'
+    hall_jobs_by_org_output = '\t\t'
     org_count_index = 0
     for job_org, job_org_count in sorted(all_jobs_by_org_count.iteritems(), key=lambda (k,v): (v, k), reverse=True):
             if org_count_index < 3:
                 if job_org_count > 50:
                     all_jobs_by_org_output = all_jobs_by_org_output + job_org + ' = ' + green(job_org_count) + ', '
                     pall_jobs_by_org_output = pall_jobs_by_org_output + job_org + ' = ' + str(job_org_count) + ', '
+                    hall_jobs_by_org_output = hall_jobs_by_org_output + job_org + ' = ' + "<b>" + str(job_org_count) + "</b>" + ', '
                 else:
                     all_jobs_by_org_output = all_jobs_by_org_output + job_org + ' = ' + str(job_org_count) + ', '
                     pall_jobs_by_org_output = pall_jobs_by_org_output + job_org + ' = ' + str(job_org_count) + ', '
+                    hall_jobs_by_org_output = hall_jobs_by_org_output + job_org + ' = ' + str(job_org_count) + ', '
                 org_count_index = org_count_index + 1
             else:
                 org_count_index = 0
                 if job_org_count > 50:
                     all_jobs_by_org_output = all_jobs_by_org_output.strip(', ') + "\n\t\t" + job_org + ' = ' + green(job_org_count) + ', '
                     pall_jobs_by_org_output = pall_jobs_by_org_output.strip(', ') + "\n\t\t" + job_org + ' = ' + str(job_org_count) + ', '
+                    hall_jobs_by_org_output = hall_jobs_by_org_output.strip(', ') + "\n\t\t" + job_org + ' = ' + "<b>" + str(job_org_count) + "</b>" + ', '
                 else:
                     all_jobs_by_org_output = all_jobs_by_org_output.strip(', ') + "\n\t\t" + job_org + ' = ' + str(job_org_count) + ', '
-                    pall_jobs_by_org_output = pall_jobs_by_org_output.strip(', ') + "\n\t\t" + job_org + ' = ' + str(job_org_count) + ', '                    
+                    pall_jobs_by_org_output = pall_jobs_by_org_output.strip(', ') + "\n\t\t" + job_org + ' = ' + str(job_org_count) + ', '
+                    hall_jobs_by_org_output = hall_jobs_by_org_output.strip(', ') + "\n\t\t" + job_org + ' = ' + str(job_org_count) + ', '
                 org_count_index = org_count_index + 1
     all_jobs_by_org_output = all_jobs_by_org_output.strip(', ') + "\n"
     pall_jobs_by_org_output = pall_jobs_by_org_output.strip(', ') + "\n"
+    hall_jobs_by_org_output = hall_jobs_by_org_output.strip(', ') + "\n"
     ci_metrics_report = ci_metrics_report + all_jobs_by_org_output
     ci_metrics_report_plain = ci_metrics_report_plain + pall_jobs_by_org_output
+    ci_metrics_report_html = ci_metrics_report_html + hall_jobs_by_org_output
 
     fragmentj5 = "\tBy Job Type: "
+    hfragmentj5 = "\t<span style=\" color: maroon\">By Job Type:</span> "
     ci_metrics_report = ci_metrics_report + fragmentj5
     ci_metrics_report_plain = ci_metrics_report_plain + fragmentj5
+    ci_metrics_report_html = ci_metrics_report_html + hfragmentj5
     all_jobs_by_type_output = ''
     pall_jobs_by_type_output = ''
+    hall_jobs_by_type_output = ''
     for job_type, job_type_count in all_jobs_by_type_count.items():
         all_jobs_by_type_output = all_jobs_by_type_output + job_type + ' = ' + str(job_type_count) + ', '
         pall_jobs_by_type_output = pall_jobs_by_type_output + job_type + ' = ' + str(job_type_count) + ', '
+        hall_jobs_by_type_output = hall_jobs_by_type_output + job_type + ' = ' + str(job_type_count) + ', '
     all_jobs_by_type_output = all_jobs_by_type_output.strip(', ') + "\n"
     pall_jobs_by_type_output = pall_jobs_by_type_output.strip(', ') + "\n"
+    hall_jobs_by_type_output = hall_jobs_by_type_output.strip(', ') + "\n"
     ci_metrics_report = ci_metrics_report + all_jobs_by_type_output
     ci_metrics_report_plain = ci_metrics_report_plain + pall_jobs_by_type_output
+    ci_metrics_report_html = ci_metrics_report_html + hall_jobs_by_type_output
 
     fragmentj6 = "\tBy Job Status: "
+    hfragmentj6 = "\t<span style=\" color: maroon\">By Job Status:</span> "
     ci_metrics_report = ci_metrics_report + fragmentj6
     ci_metrics_report_plain = ci_metrics_report_plain + fragmentj6
+    ci_metrics_report_html = ci_metrics_report_html + hfragmentj6
     all_jobs_by_status_output = ''
     pall_jobs_by_status_output = ''
+    hall_jobs_by_status_output = ''
     for job_status, job_status_count in all_jobs_by_status_count.items():
         all_jobs_by_status_output = all_jobs_by_status_output + job_status + ' = ' + str(job_status_count) + ', '
         pall_jobs_by_status_output = pall_jobs_by_status_output + job_status + ' = ' + str(job_status_count) + ', '
+        hall_jobs_by_status_output = hall_jobs_by_status_output + job_status + ' = ' + str(job_status_count) + ', '
     all_jobs_by_status_output = all_jobs_by_status_output.strip(', ') + "\n"
     pall_jobs_by_status_output = pall_jobs_by_status_output.strip(', ') + "\n"
+    hall_jobs_by_status_output = hall_jobs_by_status_output.strip(', ') + "\n"
     ci_metrics_report = ci_metrics_report + all_jobs_by_status_output
     ci_metrics_report_plain = ci_metrics_report_plain + pall_jobs_by_status_output
+    ci_metrics_report_html = ci_metrics_report_html + hall_jobs_by_status_output
 
     fragmentj7 = "\tBy Job Schedule Type: "
+    hfragmentj7 = "\t<span style=\" color: maroon\">By Job Schedule Type:</span> "
     ci_metrics_report = ci_metrics_report + fragmentj7
     ci_metrics_report_plain = ci_metrics_report_plain + fragmentj7
+    ci_metrics_report_html = ci_metrics_report_html + hfragmentj7
     all_jobs_by_timer_output = ''
     pall_jobs_by_timer_output = ''
+    hall_jobs_by_timer_output = ''
     for job_timer, job_timer_count in all_jobs_by_timer_count.items():
         all_jobs_by_timer_output = all_jobs_by_timer_output + job_timer + ' = ' + str(job_timer_count) + ', '
         pall_jobs_by_timer_output = pall_jobs_by_timer_output + job_timer + ' = ' + str(job_timer_count) + ', '
+        hall_jobs_by_timer_output = hall_jobs_by_timer_output + job_timer + ' = ' + str(job_timer_count) + ', '
     all_jobs_by_timer_output = all_jobs_by_timer_output.strip(', ') + "\n"
     pall_jobs_by_timer_output = pall_jobs_by_timer_output.strip(', ') + "\n"
+    hall_jobs_by_timer_output = hall_jobs_by_timer_output.strip(', ') + "\n"
     ci_metrics_report = ci_metrics_report + all_jobs_by_timer_output
     ci_metrics_report_plain = ci_metrics_report_plain + pall_jobs_by_timer_output
+    ci_metrics_report_html = ci_metrics_report_html + hall_jobs_by_timer_output
 
     fragmentj8 = "\tBy Job SCM Type: "
+    hfragmentj8 = "\t<span style=\" color: maroon\">By Job SCM Type:</span> "
     ci_metrics_report = ci_metrics_report + fragmentj8
     ci_metrics_report_plain = ci_metrics_report_plain + fragmentj8
+    ci_metrics_report_html = ci_metrics_report_html + hfragmentj8
     all_jobs_by_scm_output = ''
     pall_jobs_by_scm_output = ''
+    hall_jobs_by_scm_output = ''
     for job_scm, job_scm_count in all_jobs_by_scm_count.items():
         all_jobs_by_scm_output = all_jobs_by_scm_output + job_scm + ' = ' + str(job_scm_count) + ', '
         pall_jobs_by_scm_output = pall_jobs_by_scm_output + job_scm + ' = ' + str(job_scm_count) + ', '
+        hall_jobs_by_scm_output = hall_jobs_by_scm_output + job_scm + ' = ' + str(job_scm_count) + ', '
     all_jobs_by_scm_output = all_jobs_by_scm_output.strip(', ') + "\n"
     pall_jobs_by_scm_output = pall_jobs_by_scm_output.strip(', ') + "\n"
+    hall_jobs_by_scm_output = hall_jobs_by_scm_output.strip(', ') + "\n"
     ci_metrics_report = ci_metrics_report + all_jobs_by_scm_output
     ci_metrics_report_plain = ci_metrics_report_plain + pall_jobs_by_scm_output
+    ci_metrics_report_html = ci_metrics_report_html + hall_jobs_by_scm_output
 
     fragmentj9 = "\tBy Job Sonar Quality Scan Feature: "
+    hfragmentj9 = "\t<span style=\" color: maroon\">By Job Sonar Quality Scan Feature:</span> "
     ci_metrics_report = ci_metrics_report + fragmentj9
     ci_metrics_report_plain = ci_metrics_report_plain + fragmentj9
+    ci_metrics_report_html = ci_metrics_report_html + hfragmentj9
     all_jobs_by_sonar_output = ''
     pall_jobs_by_sonar_output = ''
+    hall_jobs_by_sonar_output = ''
     for job_sonar, job_sonar_count in all_jobs_by_sonar_count.items():
         all_jobs_by_sonar_output = all_jobs_by_sonar_output + job_sonar + ' = ' + str(job_sonar_count) + ', '
         pall_jobs_by_sonar_output = pall_jobs_by_sonar_output + job_sonar + ' = ' + str(job_sonar_count) + ', '
+        hall_jobs_by_sonar_output = hall_jobs_by_sonar_output + job_sonar + ' = ' + str(job_sonar_count) + ', '
     all_jobs_by_sonar_output = all_jobs_by_sonar_output.strip(', ') + "\n"
     pall_jobs_by_sonar_output = pall_jobs_by_sonar_output.strip(', ') + "\n"
+    hall_jobs_by_sonar_output = hall_jobs_by_sonar_output.strip(', ') + "\n"
     ci_metrics_report = ci_metrics_report + all_jobs_by_sonar_output
     ci_metrics_report_plain = ci_metrics_report_plain + pall_jobs_by_sonar_output
+    ci_metrics_report_html = ci_metrics_report_html + hall_jobs_by_sonar_output
 
-    fragmentj10 = "\tBy Job AppScan Feature: "
+    fragmentj10 = "\tBy Job Appscan Feature: "
+    hfragmentj10 = "\t<span style=\" color: maroon\">By Job Appscan Feature:</span> "
     ci_metrics_report = ci_metrics_report + fragmentj10
     ci_metrics_report_plain = ci_metrics_report_plain + fragmentj10
+    ci_metrics_report_html = ci_metrics_report_html + hfragmentj10
     all_jobs_by_appscan_output = ''
     pall_jobs_by_appscan_output = ''
+    hall_jobs_by_appscan_output = ''
     for job_appscan, job_appscan_count in all_jobs_by_appscan_count.items():
         all_jobs_by_appscan_output = all_jobs_by_appscan_output + job_appscan + ' = ' + str(job_appscan_count) + ', '
         pall_jobs_by_appscan_output = pall_jobs_by_appscan_output + job_appscan + ' = ' + str(job_appscan_count) + ', '
+        hall_jobs_by_appscan_output = hall_jobs_by_appscan_output + job_appscan + ' = ' + str(job_appscan_count) + ', '
     all_jobs_by_appscan_output = all_jobs_by_appscan_output.strip(', ') + "\n"
     pall_jobs_by_appscan_output = pall_jobs_by_appscan_output.strip(', ') + "\n"
+    hall_jobs_by_appscan_output = hall_jobs_by_appscan_output.strip(', ') + "\n"
     ci_metrics_report = ci_metrics_report + all_jobs_by_appscan_output
     ci_metrics_report_plain = ci_metrics_report_plain + pall_jobs_by_appscan_output
+    ci_metrics_report_html = ci_metrics_report_html + hall_jobs_by_appscan_output
 
     ci_metrics_report = ci_metrics_report + '*' * 150 + "\n"
     ci_metrics_report_plain = ci_metrics_report_plain + '*' * 150 + "\n"
+    ci_metrics_report_html = ci_metrics_report_html + "</pre>" + "\n"
 
     ci_metrics_report = ci_metrics_report + "\n"
     ci_metrics_report_plain = ci_metrics_report_plain + "\n"
+    ci_metrics_report_html = ci_metrics_report_html + "<h1>CI Job Run Metrics for " + run_date + "</h1><pre>\n"
 
     ci_metrics_report = ci_metrics_report + '*' * 150 + "\n"
     ci_metrics_report_plain = ci_metrics_report_plain + '*' * 150 + "\n"
 
     fragment1 = "Date of CI Job Run Metrics Report: " + yellow(run_date) + "\n"
     pfragment1 = "Date of CI Job Run Metrics Report: " + str(run_date) + "\n"
+    hfragment1 = "<strong style=\"color: navy\">Date of CI Job Run Metrics Report:</strong> " + "<strong style=\"color: blue\">" + str(run_date) + "</strong>" + "\n"
     ci_metrics_report = ci_metrics_report + fragment1
     ci_metrics_report_plain = ci_metrics_report_plain + pfragment1
+    ci_metrics_report_html = ci_metrics_report_html + hfragment1
 
     fragment2 = "Day of the week: " + run_date_obj.strftime("%A") + "\n"
+    hfragment2 = "<strong style=\"color: navy\">Day of the week:</strong> " + run_date_obj.strftime("%A") + "\n"
     ci_metrics_report = ci_metrics_report + fragment2
     ci_metrics_report_plain = ci_metrics_report_plain + fragment2
+    ci_metrics_report_html = ci_metrics_report_html + hfragment2
 
     fragment3 = "Total Number of Job Runs: " + green(total_num_of_job_runs) + "\n"
     pfragment3 = "Total Number of Job Runs: " + str(total_num_of_job_runs) + "\n"
+    hfragment3 = "<strong style=\"color: navy\">Total Number of Job Runs:</strong> " + "<strong style=\"color: green\">" + str(total_num_of_job_runs) + "</strong>" + "\n"
     ci_metrics_report = ci_metrics_report + fragment3
     ci_metrics_report_plain = ci_metrics_report_plain + pfragment3
+    ci_metrics_report_html = ci_metrics_report_html + hfragment3
     
     fragment4 = "\tJob Run Count By Build Status: "
+    hfragment4 = "\t<span style=\" color: maroon\">By Job Run Count By Build Status:</span> "
     ci_metrics_report = ci_metrics_report + fragment4
     ci_metrics_report_plain = ci_metrics_report_plain + fragment4
+    ci_metrics_report_html = ci_metrics_report_html + hfragment4
     job_result_output = ''
     pjob_result_output = ''
+    hjob_result_output = ''
     for job_result_type, job_result_frequency in job_results.items():
         if job_result_type == 'SUCCESS':
             job_result_output = job_result_output + job_result_type + ' = ' + green(job_result_frequency) + ', '
         else:
             job_result_output = job_result_output + job_result_type + ' = ' + red(job_result_frequency) + ', '
         pjob_result_output = pjob_result_output + job_result_type + ' = ' + str(job_result_frequency) + ', '
+        hjob_result_output = hjob_result_output + job_result_type + ' = ' + str(job_result_frequency) + ', '
     job_result_output = job_result_output.strip(', ') + "\n"
     pjob_result_output = pjob_result_output.strip(', ') + "\n"
+    hjob_result_output = hjob_result_output.strip(', ') + "\n"
     ci_metrics_report = ci_metrics_report + job_result_output
     ci_metrics_report_plain = ci_metrics_report_plain + pjob_result_output
+    ci_metrics_report_html = ci_metrics_report_html + hjob_result_output
 
     fragment5 = "\tJob Run Timeline (PST): |"
+    hfragment5 = "\t<span style=\" color: maroon\">By Job Run Timeline:</span> |"
     ci_metrics_report = ci_metrics_report + fragment5
     ci_metrics_report_plain = ci_metrics_report_plain + fragment5
+    ci_metrics_report_html = ci_metrics_report_html + hfragment5
     overall_job_run_timeline_output = ''
     poverall_job_run_timeline_output = ''
+    hoverall_job_run_timeline_output = ''
     for hr in sorted(total_num_of_jobs_by_hr.keys()):
-        if total_num_of_jobs_by_hr[hr] != 0:
+        if total_num_of_jobs_by_hr[hr] > 12:
             overall_job_run_timeline_output = overall_job_run_timeline_output + red(str(total_num_of_jobs_by_hr[hr])) + '|'
+            hoverall_job_run_timeline_output = hoverall_job_run_timeline_output + "<span style=\"color: red\">" + str(total_num_of_jobs_by_hr[hr]) + '</span>|'
         else:
             overall_job_run_timeline_output = overall_job_run_timeline_output + str(total_num_of_jobs_by_hr[hr]) + '|'
+            hoverall_job_run_timeline_output = hoverall_job_run_timeline_output + str(total_num_of_jobs_by_hr[hr]) + '|'
         poverall_job_run_timeline_output = poverall_job_run_timeline_output + str(total_num_of_jobs_by_hr[hr]) + '|'
     ci_metrics_report = ci_metrics_report + overall_job_run_timeline_output + "\n"
     ci_metrics_report_plain = ci_metrics_report_plain + poverall_job_run_timeline_output + "\n"
+    ci_metrics_report_html = ci_metrics_report_html + hoverall_job_run_timeline_output + "\n"
 
     fragment6 = "\tJobs That Ran: " + green(len(job_runs)) + "\n"
     pfragment6 = "\tJobs That Ran: " + str(len(job_runs)) + "\n"
+    hfragment6 = "\t<span style=\" color: maroon\">Jobs That Ran:</span> " + "<strong style=\"color: green\">" + str(len(job_runs)) + "</strong>" + "\n"
     ci_metrics_report = ci_metrics_report + fragment6
     ci_metrics_report_plain = ci_metrics_report_plain + pfragment6
+    ci_metrics_report_html = ci_metrics_report_html + hfragment6
  
     fragment7 = "Top 5 Orgs, by Job Runs:" + "\n"
+    hfragment7 = "<strong style=\"color: navy\">Top 5 Orgs, by Job Runs:</strong> " + "\n"
     ci_metrics_report = ci_metrics_report + fragment7
     ci_metrics_report_plain = ci_metrics_report_plain + fragment7
+    ci_metrics_report_html = ci_metrics_report_html + hfragment7
     job_org_count = 0
     top5_orgs_output = ''
     ptop5_orgs_output = ''
+    htop5_orgs_output = ''
     for job_org, job_org_run in sorted(job_runs_by_org.iteritems(), key=lambda (k,v): (v, k), reverse=True):
         job_org_count = job_org_count + 1
         if job_org_count < 6:
             if job_org_count == 1:
                 top5_orgs_output = top5_orgs_output + "\t" + job_org + " = " + green(job_org_run) + "\n"
+                htop5_orgs_output = htop5_orgs_output + "\t" + job_org + " = " + "<span style=\"color: green\">" + str(job_org_run) + "</span>" + "\n"
             else:
                 top5_orgs_output = top5_orgs_output + "\t" + job_org + " = " + str(job_org_run) + "\n"
+                htop5_orgs_output = htop5_orgs_output + "\t" + job_org + " = " +  str(job_org_run) + "\n"
             ptop5_orgs_output = ptop5_orgs_output + "\t" + job_org + " = " + str(job_org_run) + "\n"
     ci_metrics_report = ci_metrics_report + top5_orgs_output
     ci_metrics_report_plain = ci_metrics_report_plain + ptop5_orgs_output
+    ci_metrics_report_html = ci_metrics_report_html + htop5_orgs_output
 
     fragment8 = "Top 5 Jobs, by Job Runs:" + "\n"
+    hfragment8 = "<strong style=\"color: navy\">Top 5 Jobs, by Job Runs:</strong> " + "\n"
     ci_metrics_report = ci_metrics_report + fragment8
     ci_metrics_report_plain = ci_metrics_report_plain + fragment8
+    ci_metrics_report_html = ci_metrics_report_html + hfragment8
     top5_jobs_output = ''
     ptop5_jobs_output = ''
+    htop5_jobs_output = ''
     job_count = 0
     for job, job_run in sorted(job_runs.iteritems(), key=lambda (k,v): (v, k), reverse=True):
         job_count = job_count + 1
         if job_count < 6:
             if job_count == 1:
                 top5_jobs_output = top5_jobs_output + "\t" + job + " = " + green(job_run) + "\n"
+                htop5_jobs_output = htop5_jobs_output + "\t" + job + " = " + "<span style=\"color: green\">" + str(job_run) + "</span>" + "\n"
             else:
                 top5_jobs_output = top5_jobs_output + "\t" + job + " = " + str(job_run) + "\n"
+                htop5_jobs_output = htop5_jobs_output + "\t" + job + " = " +  str(job_run) + "\n"
             ptop5_jobs_output = ptop5_jobs_output + "\t" + job + " = " + str(job_run) + "\n"
     ci_metrics_report = ci_metrics_report + top5_jobs_output
     ci_metrics_report_plain = ci_metrics_report_plain + ptop5_jobs_output
+    ci_metrics_report_html = ci_metrics_report_html + htop5_jobs_output
 
     fragment9 = "Job Run Details, By Nodes:" + "\n"
+    hfragment9 = "<strong style=\"color: navy\">Job Run Details, By Nodes:</strong> " + "\n"
     ci_metrics_report = ci_metrics_report + fragment9
     ci_metrics_report_plain = ci_metrics_report_plain + fragment9
+    ci_metrics_report_html = ci_metrics_report_html + hfragment9
     for node, node_stats_type in nodes.items():
         node_total_count = 0
 
@@ -568,36 +692,48 @@ def generate_ci_metrics_report(run_date, run_timestamp, all_jobs, total_num_of_j
         node_count_p50, node_count_p75 = get_percentiles(node_times_values)
         node_hourly_output = '\t\tJob Run Timeline (PST): |'
         pnode_hourly_output = '\t\tJob Run Timeline (PST): |'
+        hnode_hourly_output = '\t\t<i>Job Run Timeline (PST):</i> |'
         for hr in sorted(node_stats_type['time'].keys()):
             node_total_count = node_total_count + node_stats_type['time'][hr]
             if node_stats_type['time'][hr] != 0 and node_stats_type['time'][hr] > 12:
                 node_hourly_output = node_hourly_output + red(str(node_stats_type['time'][hr])) + '|'
+                hnode_hourly_output = hnode_hourly_output + "<span style=\"color: red\">" + str(node_stats_type['time'][hr]) + "</span>" + '|'
             else:
                 node_hourly_output = node_hourly_output + str(node_stats_type['time'][hr]) + '|'
+                hnode_hourly_output = hnode_hourly_output + str(node_stats_type['time'][hr]) +  '|'
             pnode_hourly_output = pnode_hourly_output + str(node_stats_type['time'][hr]) + '|'
         node_hourly_output = node_hourly_output + "\n"
         pnode_hourly_output = pnode_hourly_output + "\n"
+        hnode_hourly_output = hnode_hourly_output + "\n"
 
         # Job Run Count Output By Node
         fragment10 = "\tTotal Job Runs on Node \"" +  node + "\" = " + green(node_total_count) + "\n"
         pfragment10 = "\tTotal Job Runs on Node \"" +  node + "\" = " + str(node_total_count) + "\n"
+        hfragment10 = "\t<span style=\"color: maroon\">Total Job Runs on Node <strong>" +  node + "</strong></span> = " + "<span style=\"color: green\">" + str(node_total_count) + "</span>" + "\n"
         ci_metrics_report = ci_metrics_report + fragment10
         ci_metrics_report_plain = ci_metrics_report_plain + pfragment10
+        ci_metrics_report_html = ci_metrics_report_html + hfragment10
         node_count_stats_output = "\t\tJob Run Count Stats: Max Job Runs per Hr = " + magenta(node_max_count) + ", Min Job Runs per Hr = " + magenta(node_min_count) + ", 50th-percentile = " + magenta(node_count_p50) + ", 75th-percentile = " + magenta(node_count_p75) + "\n"
         pnode_count_stats_output = "\t\tJob Run Count Stats: Max Job Runs per Hr = " + str(node_max_count) + ", Min Job Runs per Hr = " + str(node_min_count) + ", 50th-percentile = " + str(node_count_p50) + ", 75th-percentile = " + str(node_count_p75) + "\n"
+        hnode_count_stats_output = "\t\t<i>Job Run Count Stats:</i> Max Job Runs per Hr = " + "<span style=\"color: teal\">" + str(node_max_count) + "</span>, Min Job Runs per Hr = " + "<span style=\"color: teal\">" + str(node_min_count) + "</span>, 50th-percentile = " + "<span style=\"color: teal\">" + str(node_count_p50) + "</span>, 75th-percentile = " + "<span style=\"color: teal\">" + str(node_count_p75) + "</span>\n"
         ci_metrics_report = ci_metrics_report + node_count_stats_output
         ci_metrics_report_plain = ci_metrics_report_plain + pnode_count_stats_output
+        ci_metrics_report_html = ci_metrics_report_html + hnode_count_stats_output
         
         # Build Status Count Output By Node
         node_status_output = '\t\tJob Run Count By Build Status: '
         pnode_status_output = '\t\tJob Run Count By Build Status: '
+        hnode_status_output = '\t\t<i>Job Run Count By Build Status:</i> '
         for st in node_stats_type['status'].keys():
             node_status_output = node_status_output + st + ' = ' + blue(node_stats_type['status'][st]) + ', '
             pnode_status_output = pnode_status_output + st + ' = ' + str(node_stats_type['status'][st]) + ', '
+            hnode_status_output = hnode_status_output + st + ' = ' + "<span style=\"color: teal\">" + str(node_stats_type['status'][st]) + "</span>" + ', '
         node_status_output = node_status_output.strip(', ') + "\n"
         pnode_status_output = pnode_status_output.strip(', ') + "\n"
+        hnode_status_output = hnode_status_output.strip(', ') + "\n"
         ci_metrics_report = ci_metrics_report + node_status_output
         ci_metrics_report_plain = ci_metrics_report_plain + pnode_status_output
+        ci_metrics_report_html = ci_metrics_report_html + hnode_status_output
 
         # Duration Stats Output By Node
         node_duration_values = list(node_stats_type['duration'].values())
@@ -619,45 +755,64 @@ def generate_ci_metrics_report(run_date, run_timestamp, all_jobs, total_num_of_j
         node_duration_output = node_duration_output + '\t\tConsole Output URL of Job Run with Max Duration (' + node_max_duration + ' mins): ' + node_max_duration_url + '\n'
         pnode_duration_output = '\t\tJob Run Duration Stats of Successful Job Runs (in mins): Max Duration = ' + str(node_max_duration) + ', Min Duration = ' + str(node_min_duration) + ', 50th-percentile = ' + str(node_duration_p50) + ', 75th-percentile = ' + str(node_duration_p75) + '\n'
         pnode_duration_output = pnode_duration_output + '\t\tConsole Output URL of Job Run with Max Duration (' + node_max_duration + ' mins:) ' + node_max_duration_url + '\n'
+        hnode_duration_output = '\t\t<i>Job Run Duration Stats of Successful Job Runs (in mins):</i> Max Duration = ' + "<span style=\"color: red\">" + str(node_max_duration) + '</span>, Min Duration = ' + str(node_min_duration) + ', 50th-percentile = ' + "<span style=\"color: red\">" + str(node_duration_p50) + '</span>, 75th-percentile = ' + str(node_duration_p75) + '\n'
+        hnode_duration_output = hnode_duration_output + '\t\t<i>Console Output URL of Job Run with Max Duration (' + "<span style=\"color: red\">" + node_max_duration + ' mins</span>:)</i> ' + "<a href=\"" + node_max_duration_url + "\">" + node_max_duration_url + "</a>" + '\n'
         ci_metrics_report = ci_metrics_report + node_duration_output
         ci_metrics_report_plain = ci_metrics_report_plain + pnode_duration_output
+        ci_metrics_report_html = ci_metrics_report_html + hnode_duration_output
         
         # Timeline Output By Node
         ci_metrics_report = ci_metrics_report + node_hourly_output
         ci_metrics_report_plain = ci_metrics_report_plain + pnode_hourly_output
+        ci_metrics_report_html = ci_metrics_report_html + pnode_hourly_output
 
 
     ci_metrics_report = ci_metrics_report + '*' * 150 + "\n"
     ci_metrics_report_plain = ci_metrics_report_plain + '*' * 150 + "\n"
+    ci_metrics_report_html = ci_metrics_report_html + "</pre>" + "\n"
+    ci_metrics_report_html = ci_metrics_report_html + html_footer()
+
     print(ci_metrics_report,end='')
+    summary = open(jobs_summary_report_filename, 'w')
     summary.write(ci_metrics_report)
     summary.close()
 
     # Send the CI Metrics Report as Email
-    send_ci_report_in_email(run_date, ci_metrics_report_plain)
+    send_ci_report_in_email(run_date, ci_metrics_report_plain, ci_metrics_report_html)
 
 
-def send_ci_report_in_email(run_date, ci_metrics_report):
+def send_ci_report_in_email(run_date, ci_metrics_report_plain, ci_metrics_report_html):
     email_user = "anasharm@cisco.com"
-    # email_pwd = ""
-    FROM = "anasharm@cisco.com"
-    TO = ["cd-analytics@cisco.com"]
-    SUBJECT = "CI Job Run Summary Report for " + run_date
-    TEXT = ci_metrics_report
+    email_pwd = "Fam1lyR0cks!"
+    from_user = "anasharm@cisco.com"
+    to_users = ", ".join(["anasharm@cisco.com", "anand.sharma@gmail.com"])
+    subject = "CI Job Run Summary Report for " + run_date
 
-    # Prepare actual message
-    message = """\From: %s\nTo: %s\nSubject: %s\n\n%s
-    """ % (FROM, ", ".join(TO), SUBJECT, TEXT)
+    msg = MIMEMultipart('alternative')
+    msg['Subject'] = subject
+    msg['From'] = from_user
+    msg['To'] =  to_users
+
+    # Create the body of the message (a plain-text and an HTML version)
+    text = ci_metrics_report_plain
+    html = ci_metrics_report_html
+
+    part1 = MIMEText(text, 'plain')
+    part2 = MIMEText(html, 'html')
+    msg.attach(part1)
+    msg.attach(part2)
+
+    # Send the message via local SMTP server
     try:
-        server = smtplib.SMTP("email.cisco.com", 587) 
-        server.ehlo()
-        server.starttls()
-        server.login(email_user, email_pwd)
-        server.sendmail(FROM, TO, message)
-        server.close()
-        print("Successfully sent email with Subject:", SUBJECT)
+        s = smtplib.SMTP('email.cisco.com', 587)
+        s.ehlo()
+        s.starttls()
+        s.login(email_user, email_pwd)
+        s.sendmail(from_user, to_users, msg.as_string())
+        s.close()
+        print("Successfully sent email with Subject:", subject)
     except:
-        print("WARNING: Failed to send email with Subject:", SUBJECT)
+        print("WARNING: Failed to send email with Subject:", subject)
 
 
 def get_summary_report_filename(jobs_output_data_folder, run_date, run_timestamp):
