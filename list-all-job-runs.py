@@ -760,9 +760,9 @@ def generate_ci_metrics_report(run_date, run_timestamp, all_jobs, total_num_of_j
         node_duration_output = '\t\tJob Run Duration Stats of Successful Job Runs (in mins): Max Duration = ' + cyan(node_max_duration) + ', Min Duration = ' + cyan(node_min_duration) + ', 50th-percentile = ' + cyan(node_duration_p50) + ', 75th-percentile = ' + cyan(node_duration_p75) + '\n'
         node_duration_output = node_duration_output + '\t\tConsole Output URL of Job Run with Max Duration (' + node_max_duration + ' mins): ' + node_max_duration_url + '\n'
         pnode_duration_output = '\t\tJob Run Duration Stats of Successful Job Runs (in mins): Max Duration = ' + str(node_max_duration) + ', Min Duration = ' + str(node_min_duration) + ', 50th-percentile = ' + str(node_duration_p50) + ', 75th-percentile = ' + str(node_duration_p75) + '\n'
-        pnode_duration_output = pnode_duration_output + '\t\tConsole Output URL of Job Run with Max Duration (' + node_max_duration + ' mins:) ' + node_max_duration_url + '\n'
+        pnode_duration_output = pnode_duration_output + '\t\tConsole Output URL of Job Run with Max Duration (' + node_max_duration + ' mins): ' + node_max_duration_url + '\n'
         hnode_duration_output = '\t\t<i>Job Run Duration Stats of Successful Job Runs (in mins):</i> Max Duration = ' + "<span style=\"color: red\">" + str(node_max_duration) + '</span>, Min Duration = ' + str(node_min_duration) + ', 50th-percentile = ' + "<span style=\"color: red\">" + str(node_duration_p50) + '</span>, 75th-percentile = ' + str(node_duration_p75) + '\n'
-        hnode_duration_output = hnode_duration_output + '\t\t<i>Console Output URL of Job Run with Max Duration (' + "<span style=\"color: red\">" + node_max_duration + ' mins</span>:)</i> ' + "<a href=\"" + node_max_duration_url + "\">" + node_max_duration_url + "</a>" + '\n'
+        hnode_duration_output = hnode_duration_output + '\t\t<i>Console Output URL of Job Run with Max Duration (' + "<span style=\"color: red\">" + node_max_duration + ' mins</span>):</i> ' + "<a href=\"" + node_max_duration_url + "\">" + node_max_duration_url + "</a>" + '\n'
         ci_metrics_report = ci_metrics_report + node_duration_output
         ci_metrics_report_plain = ci_metrics_report_plain + pnode_duration_output
         ci_metrics_report_html = ci_metrics_report_html + hnode_duration_output
