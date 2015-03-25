@@ -274,7 +274,7 @@ pre {
     font-size: 1.1em;
     border-style: dashed;
     border-width: 1px;
-    background-color: #ececec;
+    background-color: #f6f6f6;
     border-color: gray;
     overflow: auto;
 }
@@ -786,6 +786,7 @@ def send_ci_report_in_email(run_date, ci_metrics_report_plain, ci_metrics_report
     email_pwd = ""
     from_user = "anasharm@cisco.com"
     to_users = ", ".join(["anasharm@cisco.com", "anand.sharma@gmail.com"])
+    #to_users = ", ".join(["cd-analytics@cisco.com"])
     subject = "CI Job Run Summary Report for " + run_date
 
     msg = MIMEMultipart('alternative')
