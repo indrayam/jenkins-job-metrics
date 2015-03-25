@@ -596,13 +596,14 @@ def generate_ci_metrics_report(run_date, run_timestamp, all_jobs, total_num_of_j
     for job_result_type, job_result_frequency in sorted(job_results.iteritems(), key=lambda (k,v): (v, k), reverse=True):
         if job_result_type == 'SUCCESS':
             percent_value = '%.2f' % (job_result_frequency/total_num_of_job_runs * 100)
-            job_result_output = job_result_output + job_result_type + ' = ' + green(job_result_frequency) + ' (' + green(percent_value) + '%), ' + ', '
+            job_result_output = job_result_output + job_result_type + ' = ' + green(job_result_frequency) + '(' + green(percent_value) + '%), ' + ', '
+            pjob_result_output = pjob_result_output + job_result_type + ' = ' + str(job_result_frequency) + '(' + str(percent_value) + ')' + ', '
             hjob_result_output = hjob_result_output + job_result_type + ' = ' + "<strong style=\"color: green\">" + str(job_result_frequency) + "</strong> (" + "<strong style=\"color: green\">" + percent_value + "%</strong>)" +  ', '
         else:
-            percent_value = '%.2f' % (job_result_frequency/total_num_of_job_runs)
-            job_result_output = job_result_output + job_result_type + ' = ' + red(job_result_frequency) + ' (' + red(percent_value) + '%)' + ', '
+            percent_value = '%.2f' % (job_result_frequency/total_num_of_job_runs * 100)
+            job_result_output = job_result_output + job_result_type + ' = ' + red(job_result_frequency) + '(' + red(percent_value) + '%)' + ', '
             hjob_result_output = hjob_result_output + job_result_type + ' = ' + "<span style=\"color: red\">" + str(job_result_frequency) + "</span> (" + "<span style=\"color: red\">" + percent_value + "%</span>)" +  ', '
-        pjob_result_output = pjob_result_output + job_result_type + ' = ' + str(job_result_frequency) + ' (' + str(percent_value) + ')' + ', '
+            pjob_result_output = pjob_result_output + job_result_type + ' = ' + str(job_result_frequency) + '(' + str(percent_value) + ')' + ', '
     job_result_output = job_result_output.strip(', ') + "\n"
     pjob_result_output = pjob_result_output.strip(', ') + "\n"
     hjob_result_output = hjob_result_output.strip(', ') + "\n"
@@ -783,12 +784,12 @@ def generate_ci_metrics_report(run_date, run_timestamp, all_jobs, total_num_of_j
     summary.close()
 
     # Send the CI Metrics Report as Email
-    # send_ci_report_in_email(run_date, ci_metrics_report_plain, ci_metrics_report_html)
+    send_ci_report_in_email(run_date, ci_metrics_report_plain, ci_metrics_report_html)
 
 
 def send_ci_report_in_email(run_date, ci_metrics_report_plain, ci_metrics_report_html):
     email_user = "anasharm@cisco.com"
-    email_pwd = ""
+    email_pwd = "Fam1lyR0cks!"
     from_user = "anasharm@cisco.com"
     to_users = "anasharm@cisco.com, anand.sharma@gmail.com"
     #to_users = "cd-analytics@cisco.com"
@@ -1019,7 +1020,7 @@ if __name__ == "__main__":
         jobs_output_data_folder_audit = jobs_output_data_folder + '/audit/'
         if not os.path.exists(jobs_output_data_folder_audit):
             os.makedirs(jobs_output_data_folder_audit)
-        top_level_folder_path = sys.argv[1]
+        top_level_folder_path = os.path.abspath(sys.argv[1])
         
         # Grab or Derive the Start Date
         if len(sys.argv) > 2:
