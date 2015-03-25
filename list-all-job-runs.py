@@ -26,7 +26,7 @@ def generate_config_xml_file_list(top_level_folder_path, all_jobs_file, run_date
             print(err.decode('utf-8'), end='')
 
 
-def process_config_xml_file_list(run_date, run_timestamp, all_jobs_file, jobs_output_data_folder):
+def process_config_xml_file_list(run_date, top_level_folder_path, run_timestamp, all_jobs_file, jobs_output_data_folder):
     jobs = {}
 
     # Process all config.xml files in all-jobs.txt and set up dictionary of dictionaries data structure
@@ -34,7 +34,7 @@ def process_config_xml_file_list(run_date, run_timestamp, all_jobs_file, jobs_ou
     with open(all_jobs_file, 'r') as file:
         for line in file:
             config_xml_file_name = line.strip()
-            job_key, job_name, job_basics_status = get_job_basics(config_xml_file_name)
+            job_key, job_name, job_basics_status = get_job_basics(config_xml_file_name, top_level_folder_path)
             job_org_key = job_key.split(':')[0]
             if job_basics_status == '_ERR_':
                 audit_job_log_file.write('_ERR_: File Path Parsing Error ' + config_xml_file_name + '\n')
@@ -160,10 +160,10 @@ def process_config_xml_file_list(run_date, run_timestamp, all_jobs_file, jobs_ou
     return jobs 
 
 
-def get_job_basics(job_run):
+def get_job_basics(job_run, top_level_folder_path):
     job_key, job_name, job_basics_status = "Undef", "Undef", "_ERR_"
     line_tokens = job_run.split('/')
-    job_key = get_job_key(line_tokens[:-1])
+    job_key = get_job_key_for_jobs(job_run, top_level_folder_path)
     job_name = line_tokens[-2]
     if job_name != "Undef":
         job_basics_status = "SUCCESS"
@@ -185,7 +185,7 @@ def generate_build_xml_file_list(top_level_folder_path, all_runs_file, run_date)
             print(err.decode('utf-8'), end='')
 
 
-def process_build_xml_file_list(run_date, run_timestamp, all_runs_file, jobs_output_data_folder, all_jobs):
+def process_build_xml_file_list(run_date, top_level_folder_path, run_timestamp, all_runs_file, jobs_output_data_folder, all_jobs):
 
     # define variables to capture overall data
     total_num_of_job_runs = 0
@@ -204,7 +204,7 @@ def process_build_xml_file_list(run_date, run_timestamp, all_runs_file, jobs_out
     with open(all_runs_file, 'r') as file:
         for line in file:
             build_xml_file_name = line.strip()
-            job_key, job_name, job_date, job_time_hr, job_time_min, job_run_basics_status = get_job_run_basics(build_xml_file_name)
+            job_key, job_name, job_date, job_time_hr, job_time_min, job_run_basics_status = get_job_run_basics(build_xml_file_name, top_level_folder_path)
             if job_run_basics_status == '_ERR_':
                 audit_log_file.write('_ERR_: File Path Parsing Error ' + build_xml_file_name + '\n')
                 continue
@@ -779,7 +779,7 @@ def generate_ci_metrics_report(run_date, run_timestamp, all_jobs, total_num_of_j
     summary.close()
 
     # Send the CI Metrics Report as Email
-    send_ci_report_in_email(run_date, ci_metrics_report_plain, ci_metrics_report_html)
+    # send_ci_report_in_email(run_date, ci_metrics_report_plain, ci_metrics_report_html)
 
 
 def send_ci_report_in_email(run_date, ci_metrics_report_plain, ci_metrics_report_html):
@@ -877,13 +877,13 @@ def process_build_xml_file(build_xml_file_name):
     return job_number, job_duration, job_builton, job_result, process_build_status
 
 
-def get_job_run_basics(job_run):
+def get_job_run_basics(job_run, top_level_folder_path):
     job_key, job_name, job_date, job_time_hr, job_time_min, job_run_basics_status = "Undef", "Undef", "Undef", "Undef", "Undef", "_ERR_"
     line_tokens = job_run.split('/')
     inside_modules = is_inside_modules(job_run) 
     if line_tokens[-3] == 'builds' and not inside_modules:
         job_run_basics_status = "SUCCESS"
-        job_key = get_job_key(line_tokens[:-3])
+        job_key = get_job_key_for_job_runs(job_run, top_level_folder_path)
         job_name = line_tokens[-4]
         job_date_tokens = line_tokens[-2].split('_')
         job_date = job_date_tokens[0]
@@ -909,19 +909,64 @@ def is_inside_modules(job_run):
     return inside_modules
 
 
-def get_job_key(line_tokens):
+def get_job_key_for_job_runs(job_run, top_level_folder_path):
+    start_index = len(top_level_folder_path)
+    file_path = job_run[start_index + 1:]
+    # print('Jobs:', file_path)
+    line_tokens = file_path.split('/')
     count = 0
+    job_key = ''
     for el in line_tokens:
-        if el == 'jobs' and count == 0:
-            job_key = ''
+        if count == 0:
+            job_key = job_key + el
             count = count + 1
+        elif el == 'builds' or el == 'config.xml':
+            break
         elif el != 'jobs':
-            if count == 1:
-                job_key = el
-                count = count + 1
-            else:
-                job_key = job_key + ':' + el
+            job_key = job_key + ':' + el
+            count = count + 1
+        else:
+            count = count + 1
 
+    # print('Job Runs:', job_key)
+    return job_key
+
+
+def get_job_key_for_jobs(job_run, top_level_folder_path):
+    start_index = 0
+    if top_level_folder_path[0] == '/':
+        if top_level_folder_path[-1] == '/':
+            start_index = len(top_level_folder_path)
+        else:
+            start_index = len(top_level_folder_path) + 1
+    elif top_level_folder_path[0] == '.':
+        if top_level_folder_path[-1] == '/':
+            start_index = len(top_level_folder_path[2:])
+        else:
+            start_index = len(top_level_folder_path[2:]) + 1
+    else:
+        if top_level_folder_path[-1] == '/':
+            start_index = len(top_level_folder_path)
+        else:
+            start_index = len(top_level_folder_path) + 1
+    file_path = job_run[start_index:]
+    # print('Jobs:', file_path)
+    line_tokens = file_path.split('/')
+    count = 0
+    job_key = ''
+    for el in line_tokens:
+        if count == 0:
+            job_key = job_key + el
+            count = count + 1
+        elif el == 'builds' or el == 'config.xml':
+            break
+        elif el != 'jobs':
+            job_key = job_key + ':' + el
+            count = count + 1
+        else:
+            count = count + 1
+
+    # print('Jobs:', job_key)
     return job_key
 
 
@@ -1002,10 +1047,10 @@ if __name__ == "__main__":
 
                 # Get Jobs Metrics
                 generate_config_xml_file_list(top_level_folder_path, all_jobs_file, run_date)
-                all_jobs = process_config_xml_file_list(run_date, run_timestamp, all_jobs_file, jobs_output_data_folder)
+                all_jobs = process_config_xml_file_list(run_date, top_level_folder_path, run_timestamp, all_jobs_file, jobs_output_data_folder)
 
                 # Get Job Runs Metrics
                 generate_build_xml_file_list(top_level_folder_path, all_runs_file, run_date)
-                process_build_xml_file_list(run_date, run_timestamp, all_runs_file, jobs_output_data_folder, all_jobs)
+                process_build_xml_file_list(run_date, top_level_folder_path, run_timestamp, all_runs_file, jobs_output_data_folder, all_jobs)
         else:
             print_usage_and_exit()
