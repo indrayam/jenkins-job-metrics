@@ -1,4 +1,4 @@
-from __future__ import print_function
+from __future__ import print_function, division
 import datetime
 import time
 import math
@@ -595,12 +595,12 @@ def generate_ci_metrics_report(run_date, run_timestamp, all_jobs, total_num_of_j
     percent_value = 0
     for job_result_type, job_result_frequency in sorted(job_results.iteritems(), key=lambda (k,v): (v, k), reverse=True):
         if job_result_type == 'SUCCESS':
-            percent_value = '%.2f' % (job_result_frequency/total_num_of_job_runs * 100)
+            percent_value = '%.2f' % (float(job_result_frequency)/total_num_of_job_runs * 100.0)
             job_result_output = job_result_output + job_result_type + ' = ' + green(job_result_frequency) + '(' + green(percent_value) + '%), ' + ', '
             pjob_result_output = pjob_result_output + job_result_type + ' = ' + str(job_result_frequency) + '(' + str(percent_value) + ')' + ', '
             hjob_result_output = hjob_result_output + job_result_type + ' = ' + "<strong style=\"color: green\">" + str(job_result_frequency) + "</strong> (" + "<strong style=\"color: green\">" + percent_value + "%</strong>)" +  ', '
         else:
-            percent_value = '%.2f' % (job_result_frequency/total_num_of_job_runs * 100)
+            percent_value = '%.2f' % (float(job_result_frequency)/total_num_of_job_runs * 100)
             job_result_output = job_result_output + job_result_type + ' = ' + red(job_result_frequency) + '(' + red(percent_value) + '%)' + ', '
             hjob_result_output = hjob_result_output + job_result_type + ' = ' + "<span style=\"color: red\">" + str(job_result_frequency) + "</span> (" + "<span style=\"color: red\">" + percent_value + "%</span>)" +  ', '
             pjob_result_output = pjob_result_output + job_result_type + ' = ' + str(job_result_frequency) + '(' + str(percent_value) + ')' + ', '
