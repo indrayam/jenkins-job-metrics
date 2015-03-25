@@ -263,7 +263,7 @@ def process_build_xml_file_list(run_date, run_timestamp, all_runs_file, jobs_out
     # Generate summary report
     generate_ci_metrics_report(run_date, run_timestamp, all_jobs, total_num_of_job_runs, nodes, job_runs, job_results, job_runs_by_org, total_num_of_jobs_by_hr)
 
-def html_header(run_date):
+def html_header():
     header = """\
 <html>
 <head>
@@ -286,8 +286,9 @@ h1 {
 </style>
 </head>
 <body>
-<h1>CI Job Metrics for """
-    header = header + run_date + "</h1><pre>\n"
+<h1>CI Job Metrics</h1>
+<pre>
+"""
     return header
 
 
@@ -307,10 +308,10 @@ def generate_ci_metrics_report(run_date, run_timestamp, all_jobs, total_num_of_j
 
     ci_metrics_report = '*' * 150 + "\n"
     ci_metrics_report_plain = ci_metrics_report
+    ci_metrics_report_html = html_header()
 
     today = datetime.date.today()
     stoday = today.strftime('%Y-%m-%d')
-    ci_metrics_report_html = html_header(stoday)
     fragmentj1 = "Date of CI Job Metrics Report: " + yellow(stoday) + "\n"
     pfragmentj1 = "Date of CI Job Metrics Report: " + str(stoday) + "\n"
     hfragmentj1 = "<strong style=\"color: navy\">Date of CI Job Metrics Report:</strong> " + "<strong style=\"color: blue\">" + str(stoday) + "</strong>" + "\n"
@@ -558,7 +559,7 @@ def generate_ci_metrics_report(run_date, run_timestamp, all_jobs, total_num_of_j
 
     ci_metrics_report = ci_metrics_report + "\n"
     ci_metrics_report_plain = ci_metrics_report_plain + "\n"
-    ci_metrics_report_html = ci_metrics_report_html + "<h1>CI Job Run Metrics for " + run_date + "</h1><pre>\n"
+    ci_metrics_report_html = ci_metrics_report_html + "<h1>CI Job Run Metrics</h1>\n<pre>\n"
 
     ci_metrics_report = ci_metrics_report + '*' * 150 + "\n"
     ci_metrics_report_plain = ci_metrics_report_plain + '*' * 150 + "\n"
@@ -785,8 +786,8 @@ def send_ci_report_in_email(run_date, ci_metrics_report_plain, ci_metrics_report
     email_user = "anasharm@cisco.com"
     email_pwd = ""
     from_user = "anasharm@cisco.com"
-    to_users = ", ".join(["anasharm@cisco.com", "anand.sharma@gmail.com"])
-    #to_users = ", ".join(["cd-analytics@cisco.com"])
+    to_users = "anasharm@cisco.com, anand.sharma@gmail.com"
+    #to_users = "cd-analytics@cisco.com"
     subject = "CI Job Run Summary Report for " + run_date
 
     msg = MIMEMultipart('alternative')
