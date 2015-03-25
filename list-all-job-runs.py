@@ -789,7 +789,7 @@ def generate_ci_metrics_report(run_date, run_timestamp, all_jobs, total_num_of_j
 
 def send_ci_report_in_email(run_date, ci_metrics_report_plain, ci_metrics_report_html):
     email_user = "anasharm@cisco.com"
-    email_pwd = "Fam1lyR0cks!"
+    # email_pwd = ""
     from_user = "anasharm@cisco.com"
     to_users = "anasharm@cisco.com, anand.sharma@gmail.com"
     #to_users = "cd-analytics@cisco.com"
