@@ -28,6 +28,8 @@ def generate_config_xml_file_list(top_level_folder_path, all_jobs_file, run_date
 
 def process_config_xml_file_list(run_date, top_level_folder_path, run_timestamp, all_jobs_file, jobs_output_data_folder):
     jobs = {}
+    jobs_with_num_to_keep = {}
+    jobs_with_num_to_keep_count = 0
 
     # Process all config.xml files in all-jobs.txt and set up dictionary of dictionaries data structure
     audit_job_log_file = open(jobs_output_data_folder + '/audit/' + run_date + '_' + run_timestamp + '-audit-jobs.log', 'w')
@@ -160,7 +162,20 @@ def process_config_xml_file_list(run_date, top_level_folder_path, run_timestamp,
                             cdd_feature = "Enabled"
             jobs[job_key]['cdd'] = cdd_feature
 
-    return jobs 
+            num_to_keep = "Undef"
+            for num in root.iter('numToKeep'):
+                if num.text is not None:
+                    num_to_keep = num.text
+                    jobs_with_num_to_keep[job_key] = num_to_keep
+                    jobs_with_num_to_keep_count = jobs_with_num_to_keep_count + 1
+
+    num_to_keep_file = open(os.getcwd() + '/' + 'all-jobs-with-num-to-keep.txt', 'w')
+    num_to_keep_file.write("Total Number of Jobs with Num to Keep Issues: " + str(jobs_with_num_to_keep_count) + "\n")
+    for jk, jntk in jobs_with_num_to_keep.items():
+        num_to_keep_file.write(jk + ' -> ' + str(jntk) + "\n")
+    num_to_keep_file.close()
+
+    return jobs
 
 
 def get_job_basics(job_run, top_level_folder_path):
