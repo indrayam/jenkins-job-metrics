@@ -134,10 +134,13 @@ def process_config_xml_file_list(run_date, top_level_folder_path, run_timestamp,
 
             # Setup Sonar Quality Scan Configuration of the Job
             sonar_feature = "Undef"
-            for artifact in root.iter('hudson.plugins.sonar.SonarRunnerBuilder'):
+            for sonarb in root.iter('hudson.plugins.sonar.SonarRunnerBuilder'):
+                sonar_feature = "Enabled"
+            for sonarp in root.iter('hudson.plugins.sonar.SonarPublisher'):
                 sonar_feature = "Enabled"
             if sonar_feature == "Undef":
                 sonar_feature = "Disabled"
+            
             jobs[job_key]['sonar'] = sonar_feature
 
             # Setup Appscan Configuration of the Job
@@ -873,12 +876,20 @@ def process_build_xml_file(build_xml_file_name):
         for child in root:
             if child.tag == 'duration':
                 job_duration = child.text
+                if job_duration is None:
+                    job_duration = ""
             elif child.tag == 'builtOn':
                 job_builton = child.text
+                if job_builton is None:
+                    job_builton = "Undef"
             elif child.tag == 'result':
                 job_result = child.text
+                if job_result is None:
+                    job_result = "Undef"
             elif child.tag == 'number':
                 job_number = child.text
+                if job_number is None:
+                    job_number = "Undef"
     return job_number, job_duration, job_builton, job_result, process_build_status
 
 
