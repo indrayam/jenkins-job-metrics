@@ -169,7 +169,7 @@ def process_config_xml_file_list(run_date, top_level_folder_path, run_timestamp,
 
     num_to_keep_file = open(os.getcwd() + '/' + 'all-jobs-with-num-to-keep.txt', 'w')
     for jk, jntk in jobs_with_num_to_keep.items():
-        if jntk < 10:
+        if jntk > 0 and jntk < 10:
             num_to_keep_file.write(jk + '|' + str(jntk) + "\n")
     num_to_keep_file.close()
 
