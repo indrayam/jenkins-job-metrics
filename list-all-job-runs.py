@@ -146,10 +146,15 @@ def process_config_xml_file_list(run_date, top_level_folder_path, run_timestamp,
 
             # Setup Appscan Configuration of the Job
             appscan_feature = "Disabled"
+            num_to_keep = "Undef"
             for scan in root.iter('goals'):
                 if scan.text is not None:
                     if re.search(r'.*appscan.*', scan.text, re.I):
                         appscan_feature = "Enabled"
+                        for num in root.iter('numToKeep'):
+                            if num.text is not None:
+                                num_to_keep = num.text
+                                jobs_with_num_to_keep[job_key] = int(num_to_keep)
             jobs[job_key]['appscan'] = appscan_feature
 
             # Setup CDD Configuration of the Job
@@ -160,12 +165,6 @@ def process_config_xml_file_list(run_date, top_level_folder_path, run_timestamp,
                         if re.search(r'CIMVService', child.text, re.I):
                             cdd_feature = "Enabled"
             jobs[job_key]['cdd'] = cdd_feature
-
-            num_to_keep = "Undef"
-            for num in root.iter('numToKeep'):
-                if num.text is not None:
-                    num_to_keep = num.text
-                    jobs_with_num_to_keep[job_key] = int(num_to_keep)
 
     num_to_keep_file = open(os.getcwd() + '/' + 'all-jobs-with-num-to-keep.txt', 'w')
     for jk, jntk in jobs_with_num_to_keep.items():
