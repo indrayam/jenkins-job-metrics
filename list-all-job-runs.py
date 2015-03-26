@@ -165,12 +165,12 @@ def process_config_xml_file_list(run_date, top_level_folder_path, run_timestamp,
             for num in root.iter('numToKeep'):
                 if num.text is not None:
                     num_to_keep = num.text
-                    jobs_with_num_to_keep[job_key] = num_to_keep
+                    jobs_with_num_to_keep[job_key] = int(num_to_keep)
 
     num_to_keep_file = open(os.getcwd() + '/' + 'all-jobs-with-num-to-keep.txt', 'w')
     for jk, jntk in jobs_with_num_to_keep.items():
         if jntk < 10:
-            num_to_keep_file.write(jk + ' -> ' + str(jntk) + "\n")
+            num_to_keep_file.write(jk + '|' + str(jntk) + "\n")
     num_to_keep_file.close()
 
     return jobs
