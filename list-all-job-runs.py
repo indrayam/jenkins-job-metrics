@@ -31,7 +31,7 @@ def process_config_xml_file_list(run_date, top_level_folder_path, run_timestamp,
     jobs_with_num_to_keep = {}
 
     # Process all config.xml files in all-jobs.txt and set up dictionary of dictionaries data structure
-    audit_job_log_file = open(jobs_output_data_folder + '/audit/' + run_date + '_' + run_timestamp + '-audit-jobs.log', 'w')
+    audit_job_log_file = open(jobs_output_data_folder + run_timestamp + '/' + 'job-details.txt', 'w')
     with open(all_jobs_file, 'r') as file:
         for line in file:
             config_xml_file_name = line.strip()
@@ -166,23 +166,13 @@ def process_config_xml_file_list(run_date, top_level_folder_path, run_timestamp,
                             cdd_feature = "Enabled"
             jobs[job_key]['cdd'] = cdd_feature
 
-    num_to_keep_file = open(os.getcwd() + '/' + 'all-jobs-with-num-to-keep.txt', 'w')
+    num_to_keep_file = open(jobs_output_data_folder + run_timestamp + '/' + 'job-with-num-to-keep.txt', 'w')
     for jk, jntk in jobs_with_num_to_keep.items():
         if jntk > 0 and jntk < 10:
             num_to_keep_file.write(jk + '|' + str(jntk) + "\n")
     num_to_keep_file.close()
 
     return jobs
-
-
-def get_job_basics(job_run, top_level_folder_path):
-    job_key, job_name, job_basics_status = "Undef", "Undef", "_ERR_"
-    line_tokens = job_run.split('/')
-    job_key = get_job_key_for_jobs(job_run, top_level_folder_path)
-    job_name = line_tokens[-2]
-    if job_name != "Undef":
-        job_basics_status = "SUCCESS"
-    return job_key, job_name, job_basics_status
 
 
 def generate_build_xml_file_list(top_level_folder_path, all_runs_file, run_date):
@@ -215,20 +205,51 @@ def process_build_xml_file_list(run_date, top_level_folder_path, run_timestamp, 
     
 
     # Process all build.xml files in all-runs.txt and set up dictionary of dictionaries data structure
-    audit_log_file = open(jobs_output_data_folder + '/audit/' + run_date + '_' + run_timestamp + '-audit.log', 'w')
+    audit_log_file = open(jobs_output_data_folder + run_timestamp + '/' + 'job-run-details.txt', 'w')
+    all_build_xml_list_file_name = jobs_output_data_folder + 'list-all-build-xml-filenames.txt'
+
+    jobs_already_run = {}
+    jobs_already_run_but_missing = {}
+    new_run = True
+    if os.path.isfile(all_build_xml_list_file_name):
+        print("Repeat run...")
+        new_run = False
+        with open(all_build_xml_list_file_name, 'r') as list_file:
+            for list_file_line in list_file:
+                fname = list_file_line.strip()
+                jobs_already_run[fname] = 1
+    else:
+        print("New run...")
+        all_build_xml_dump_file = open(jobs_output_data_folder + '/' + 'dump-all-build-xml-files.txt', 'w')
+        all_build_xml_list_file = open(all_build_xml_list_file_name, 'w')
+
     with open(all_runs_file, 'r') as file:
         for line in file:
             build_xml_file_name = line.strip()
+
             job_key, job_name, job_date, job_time_hr, job_time_min, job_run_basics_status = get_job_run_basics(build_xml_file_name, top_level_folder_path)
             if job_run_basics_status == '_ERR_':
                 audit_log_file.write('_ERR_: File Path Parsing Error ' + build_xml_file_name + '\n')
                 continue
-            job_number, job_duration, job_builton, job_result, process_build_status = process_build_xml_file(build_xml_file_name)
+            job_number, job_duration, job_builton, job_result, process_build_status = parse_xml_file(build_xml_file_name)
             if process_build_status == '_ERR_':
                 audit_log_file.write('_ERR_: File Does not Exist Error ' + build_xml_file_name + '\n')
                 continue
             job_url = get_job_url(job_key, job_number)
             audit_log_file.write(job_key + '|' + job_number + '|' + job_date + '|' + job_time_hr + ':' + job_time_min + '|' + job_duration + '|' + job_builton + '|' + job_result + '|' + job_url + '\n')
+            if new_run:
+                all_build_xml_list_file.write(build_xml_file_name + "\n")
+                build_file = open(build_xml_file_name, 'r')
+                build_contents = build_file.read()
+                build_file.close()
+                all_build_xml_dump_file.write("*" * 100 + "\n")
+                all_build_xml_dump_file.write(build_xml_file_name + "\n")
+                all_build_xml_dump_file.write(build_contents)
+                all_build_xml_dump_file.write("\n")
+            else:
+                if len(jobs_already_run) != 0:
+                    if build_xml_file_name in jobs_already_run:
+                        jobs_already_run_but_missing[job_key] = build_xml_file_name
             
             # Create a total count of all the jobs
             total_num_of_job_runs = total_num_of_job_runs + 1
@@ -274,45 +295,18 @@ def process_build_xml_file_list(run_date, top_level_folder_path, run_timestamp, 
     
     # Close the Audit log file
     audit_log_file.close()
+    if new_run:
+        all_build_xml_list_file.close()
+        all_build_xml_dump_file.close()
+    else:
+        if len(jobs_already_run_but_missing) != 0:
+            print("Total number of jobs missing: ", len(jobs_already_run_but_missing))
+            for j_key, j_file in jobs_already_run_but_missing.items():
+                print(j_key, '|', j_file)
+
 
     # Generate summary report
     generate_ci_metrics_report(run_date, run_timestamp, all_jobs, total_num_of_job_runs, nodes, job_runs, job_results, job_runs_by_org, total_num_of_jobs_by_hr)
-
-def html_header():
-    header = """\
-<html>
-<head>
-<title>CI Job Run Summary Report</title>
-<style>
-pre {
-    font-family: calibri, arial, sans-serif;
-    font-size: 1.1em;
-    border-style: dashed;
-    border-width: 1px;
-    background-color: #f6f6f6;
-    border-color: gray;
-    overflow: auto;
-}
-h1 {
-    font-family: cambria, serif;
-    font-size: 1.5em;
-    color: black;   
-}
-</style>
-</head>
-<body>
-<h1>CI Job Metrics</h1>
-<pre>
-"""
-    return header
-
-
-def html_footer():
-    footer = """\
-</body>
-</html>
-"""
-    return footer
 
 
 def generate_ci_metrics_report(run_date, run_timestamp, all_jobs, total_num_of_job_runs, nodes, job_runs, job_results, job_runs_by_org, total_num_of_jobs_by_hr):
@@ -611,14 +605,14 @@ def generate_ci_metrics_report(run_date, run_timestamp, all_jobs, total_num_of_j
     for job_result_type, job_result_frequency in sorted(job_results.iteritems(), key=lambda (k,v): (v, k), reverse=True):
         if job_result_type == 'SUCCESS':
             percent_value = '%.2f' % (float(job_result_frequency)/total_num_of_job_runs * 100.0)
-            job_result_output = job_result_output + job_result_type + ' = ' + green(job_result_frequency) + '(' + green(percent_value) + '%), ' + ', '
+            job_result_output = job_result_output + job_result_type + ' = ' + green(job_result_frequency) + '(' + green(percent_value) + '%)' + ', '
             pjob_result_output = pjob_result_output + job_result_type + ' = ' + str(job_result_frequency) + '(' + str(percent_value) + ')' + ', '
             hjob_result_output = hjob_result_output + job_result_type + ' = ' + "<strong style=\"color: green\">" + str(job_result_frequency) + "</strong> (" + "<strong style=\"color: green\">" + percent_value + "%</strong>)" +  ', '
         else:
             percent_value = '%.2f' % (float(job_result_frequency)/total_num_of_job_runs * 100)
             job_result_output = job_result_output + job_result_type + ' = ' + red(job_result_frequency) + '(' + red(percent_value) + '%)' + ', '
-            hjob_result_output = hjob_result_output + job_result_type + ' = ' + "<span style=\"color: red\">" + str(job_result_frequency) + "</span> (" + "<span style=\"color: red\">" + percent_value + "%</span>)" +  ', '
             pjob_result_output = pjob_result_output + job_result_type + ' = ' + str(job_result_frequency) + '(' + str(percent_value) + ')' + ', '
+            hjob_result_output = hjob_result_output + job_result_type + ' = ' + "<span style=\"color: red\">" + str(job_result_frequency) + "</span> (" + "<span style=\"color: red\">" + percent_value + "%</span>)" +  ', '
     job_result_output = job_result_output.strip(', ') + "\n"
     pjob_result_output = pjob_result_output.strip(', ') + "\n"
     hjob_result_output = hjob_result_output.strip(', ') + "\n"
@@ -837,10 +831,45 @@ def send_ci_report_in_email(run_date, ci_metrics_report_plain, ci_metrics_report
         print("WARNING: Failed to send email with Subject:", subject)
 
 
+def html_header():
+    header = """\
+<html>
+<head>
+<title>CI Job Run Summary Report</title>
+<style>
+pre {
+    font-family: calibri, arial, sans-serif;
+    font-size: 1.1em;
+    border-style: dashed;
+    border-width: 1px;
+    background-color: #f6f6f6;
+    border-color: gray;
+    overflow: auto;
+}
+h1 {
+    font-family: cambria, serif;
+    font-size: 1.5em;
+    color: black;   
+}
+</style>
+</head>
+<body>
+<h1>CI Job Metrics</h1>
+<pre>
+"""
+    return header
+
+
+def html_footer():
+    footer = """\
+</body>
+</html>
+"""
+    return footer
+
+
 def get_summary_report_filename(jobs_output_data_folder, run_date, run_timestamp):
-    jobs_summary_report_filename = jobs_output_data_folder + run_date + '.txt'
-    if os.path.isfile(jobs_summary_report_filename):
-        jobs_summary_report_filename = jobs_output_data_folder + run_date + '_' + run_timestamp + '.txt'
+    jobs_summary_report_filename = jobs_output_data_folder + run_timestamp + '/' + 'summary-report.txt'
     return jobs_summary_report_filename
 
 
@@ -879,7 +908,7 @@ def percentile(N, percent, key=lambda x:x):
     return d0+d1
 
 
-def process_build_xml_file(build_xml_file_name):
+def parse_xml_file(build_xml_file_name):
     job_number, job_duration, job_builton, job_result, process_build_status = "Undef", "Undef", "Undef", "Undef", "_ERR_"
     if os.path.isfile(build_xml_file_name):
         process_build_status = "SUCCESS"
@@ -903,6 +932,16 @@ def process_build_xml_file(build_xml_file_name):
                 if job_number is None:
                     job_number = "Undef"
     return job_number, job_duration, job_builton, job_result, process_build_status
+
+
+def get_job_basics(job_run, top_level_folder_path):
+    job_key, job_name, job_basics_status = "Undef", "Undef", "_ERR_"
+    line_tokens = job_run.split('/')
+    job_key = get_job_key_for_jobs(job_run, top_level_folder_path)
+    job_name = line_tokens[-2]
+    if job_name != "Undef":
+        job_basics_status = "SUCCESS"
+    return job_key, job_name, job_basics_status
 
 
 def get_job_run_basics(job_run, top_level_folder_path):
@@ -1026,7 +1065,6 @@ def get_job_url_by_duration(node_duration_dict, node_max_duration_msec):
     return job_url    
 
 
-
 def print_usage_and_exit():
     usage = 'Usage: list-all-job-runs.py <top-level-jobs-folder> <start-date: (YYYY-MM-DD)> <end-date: (YYYY-MM-DD) | OPTIONAL>'
     print(usage)
@@ -1038,11 +1076,7 @@ if __name__ == "__main__":
     if len(sys.argv) < 2:
         print_usage_and_exit()
     else:
-        # Create the folder for storing CI Metrics and Job Audit Log files
-        jobs_output_data_folder = os.getcwd() + '/ci-metrics-python/'
-        jobs_output_data_folder_audit = jobs_output_data_folder + '/audit/'
-        if not os.path.exists(jobs_output_data_folder_audit):
-            os.makedirs(jobs_output_data_folder_audit)
+        # Create the folder for storing CI Metrics and Audits
         top_level_folder_path = os.path.abspath(sys.argv[1])
         
         # Grab or Derive the Start Date
@@ -1066,12 +1100,20 @@ if __name__ == "__main__":
             for d in range(delta.days + 1):
                 run_date_obj = start_date_obj + datetime.timedelta(days=d)
                 run_date = run_date_obj.strftime('%Y-%m-%d')
-                all_runs_file = os.getcwd() + '/all-runs.txt'
-                all_jobs_file = os.getcwd() + '/all-jobs.txt'
                 
                 # Get a timestamp for all the logs
                 ts = time.time()
                 run_timestamp = datetime.datetime.fromtimestamp(ts).strftime('%Y-%m-%d_%H-%M-%S')
+
+                # Get the run_date and run_timestamp folder created under audit, if it does not exist
+                jobs_output_data_folder = os.getcwd() + '/ci-metrics-python/' + run_date + '/' 
+                run_timestamp_folder = jobs_output_data_folder + run_timestamp + '/'
+                if not os.path.exists(run_timestamp_folder):
+                    os.makedirs(run_timestamp_folder)
+
+                # Output file for each find and ag command output
+                all_runs_file = run_timestamp_folder + 'find-command-for-job-runs.txt'
+                all_jobs_file = run_timestamp_folder + 'ag-command-for-job.txt'
 
                 # Get Jobs Metrics
                 generate_config_xml_file_list(top_level_folder_path, all_jobs_file, run_date)
