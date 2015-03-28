@@ -266,7 +266,6 @@ def process_job_run_details(run_date, run_timestamp, jobs_output_data_folder, al
 
 
     # Process all build.xml files in all-runs.txt and set up dictionary of dictionaries data structure
-    audit_log_file = open(jobs_output_data_folder + run_timestamp + '/' + 'job-run-details.txt', 'w')
     for jk, jr in all_job_runs.items():
         build_xml_file_name = jr
         job_key = jr['job_key']
@@ -331,9 +330,6 @@ def process_job_run_details(run_date, run_timestamp, jobs_output_data_folder, al
 
         # Total Number of Jobs by Hr
         total_num_of_jobs_by_hr[job_time_hr] = total_num_of_jobs_by_hr[job_time_hr] + 1
-
-    # Close the Audit log file
-    audit_log_file.close()
 
     # Generate summary report
     generate_ci_metrics_report(run_date, run_timestamp, all_jobs, total_num_of_job_runs, nodes, job_runs, job_results,
