@@ -5,15 +5,14 @@ import math
 import shlex
 import sys
 import os
-import glob
 import smtplib
-import hashlib
 import re
 from subprocess import Popen, PIPE
 import xml.etree.ElementTree as ET
-from color import red, green, yellow, blue, magenta, cyan, white
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
+
+from color import red, green, yellow, blue, magenta, cyan
 
 
 def generate_config_xml_file_list(top_level_folder_path, all_jobs_file, run_date):
@@ -27,7 +26,8 @@ def generate_config_xml_file_list(top_level_folder_path, all_jobs_file, run_date
             print(err.decode('utf-8'), end='')
 
 
-def process_config_xml_file_list(run_date, top_level_folder_path, run_timestamp, all_jobs_file, jobs_output_data_folder):
+def process_config_xml_file_list(run_date, top_level_folder_path, run_timestamp, all_jobs_file,
+                                 jobs_output_data_folder):
     jobs = {}
     jobs_with_num_to_keep = {}
 
@@ -43,12 +43,12 @@ def process_config_xml_file_list(run_date, top_level_folder_path, run_timestamp,
                 continue
             audit_job_log_file.write(job_key + '|' + job_name + '\n')
             # print('job_key', job_key, 'job_name', job_name)
-            
+
             # Jobs Dictionary of Dictionary
             if job_key not in jobs:
                 # Set up Name of the Job
                 jobs[job_key] = {}
-            
+
             # Setup Name of the Job
             jobs[job_key]['name'] = job_name
 
@@ -81,11 +81,11 @@ def process_config_xml_file_list(run_date, top_level_folder_path, run_timestamp,
 
             job_program_type = "Undef"
             if root.tag == 'project':
-                    job_program_type = "Freestyle"
-                    if re.search(r'.*plsql.*', job_sonar_properties_text, re.I):
-                        job_program_type = job_program_type + " (w PLSQL)"
-                    if job_anttask_fragment:
-                        job_program_type = job_program_type + " (w Java/Ant)"
+                job_program_type = "Freestyle"
+                if re.search(r'.*plsql.*', job_sonar_properties_text, re.I):
+                    job_program_type = job_program_type + " (w PLSQL)"
+                if job_anttask_fragment:
+                    job_program_type = job_program_type + " (w Java/Ant)"
             elif root.tag == 'maven2-moduleset':
                 job_program_type = "Java"
             jobs[job_key]['type'] = job_program_type
@@ -142,7 +142,7 @@ def process_config_xml_file_list(run_date, top_level_folder_path, run_timestamp,
                 sonar_feature = "Enabled"
             if sonar_feature == "Undef":
                 sonar_feature = "Disabled"
-            
+
             jobs[job_key]['sonar'] = sonar_feature
 
             # Setup Appscan Configuration of the Job
@@ -180,7 +180,7 @@ def generate_build_xml_file_list(top_level_folder_path, all_runs_file, run_date)
     cmd = 'find ' + top_level_folder_path + ' -name build.xml'
     args = shlex.split(cmd)
     p1 = Popen(args,
-              stdout=PIPE, stderr=PIPE, cwd=os.getcwd())
+               stdout=PIPE, stderr=PIPE, cwd=os.getcwd())
     cmd = 'grep ' + run_date
     args = shlex.split(cmd)
     with open(all_runs_file, 'w') as out:
@@ -197,14 +197,24 @@ def populate_job_run_details_hash(job_run_details_file):
         for job_run_line in job_run_file:
             job_run_line = job_run_line.strip()
             job_run_tokens_list = job_run_line.split('|')
-            job_run_details_hash[job_run_tokens_list[0]] = {'job_key': job_run_tokens_list[1], 'job_name': job_run_tokens_list[2], 'job_number': job_run_tokens_list[3],
-                                                            'job_duration': job_run_tokens_list[4], 'job_builton': job_run_tokens_list[5], 'job_result': job_run_tokens_list[6],
-                                                            'job_date': job_run_tokens_list[7], 'job_time_hr': job_run_tokens_list[8], 'job_time_min': job_run_tokens_list[9],
-                                                            'job_url': job_run_tokens_list[10] }
+            job_run_details_hash[job_run_tokens_list[0]] = {'job_key': job_run_tokens_list[1],
+                                                            'job_name': job_run_tokens_list[2],
+                                                            'job_number': job_run_tokens_list[3],
+                                                            'job_duration': job_run_tokens_list[4],
+                                                            'job_builton': job_run_tokens_list[5],
+                                                            'job_result': job_run_tokens_list[6],
+                                                            'job_date': job_run_tokens_list[7],
+                                                            'job_time_hr': job_run_tokens_list[8],
+                                                            'job_time_min': job_run_tokens_list[9],
+                                                            'job_url': job_run_tokens_list[10],
+                                                            'job_trigger': job_run_tokens_list[11],
+                                                            'job_triggered_by': job_run_tokens_list[12],
+                                                            }
     return job_run_details_hash
 
 
-def generate_build_xml_file_list_dump(run_date, run_timestamp, top_level_folder_path, all_runs_file, jobs_output_data_folder, all_jobs):
+def generate_build_xml_file_list_dump(run_date, run_timestamp, top_level_folder_path, all_runs_file,
+                                      jobs_output_data_folder, all_jobs):
     job_run_details_file = jobs_output_data_folder + run_date + '-job-runs.dmp'
     audit_log_file = open(jobs_output_data_folder + run_timestamp + '/' + 'job-run-audit.log', 'w')
     all_job_runs = {}
@@ -215,17 +225,21 @@ def generate_build_xml_file_list_dump(run_date, run_timestamp, top_level_folder_
         for line in file:
             build_xml_file_name = line.strip()
             if build_xml_file_name not in all_job_runs:
-                job_key, job_name, job_date, job_time_hr, job_time_min, job_run_basics_status = get_job_run_basics(build_xml_file_name, top_level_folder_path)
+                job_key, job_name, job_date, job_time_hr, job_time_min, job_run_basics_status = get_job_run_basics(
+                    build_xml_file_name, top_level_folder_path)
                 if job_run_basics_status == '_ERR_':
                     audit_log_file.write('_ERR_: File Path Parsing Error ' + build_xml_file_name + '\n')
                     continue
-                job_number, job_duration, job_builton, job_result, process_build_status = parse_xml_file(build_xml_file_name)
+                job_number, job_duration, job_builton, job_result, job_trigger, job_triggered_by, process_build_status = parse_xml_file(
+                    build_xml_file_name)
                 if process_build_status == '_ERR_':
                     audit_log_file.write('_ERR_: File Does not Exist Error ' + build_xml_file_name + '\n')
                     continue
                 job_url = get_job_url(job_key, job_number)
-                audit_log_file.write(job_key + '|' + job_number + '|' + job_date + '|' + job_time_hr + ':' + job_time_min + '|' + job_duration + '|' + job_builton + '|' + job_result + '|' + job_url + '\n')
-                job_run_file.write(build_xml_file_name + '|' + job_key + '|' + job_name + '|' + job_number + '|' + job_duration + '|' + job_builton + '|' + job_result + '|' +  job_date + '|' + job_time_hr + '|' + job_time_min + '|' + job_url + "\n")
+                audit_log_file.write(
+                    job_key + '|' + job_number + '|' + job_date + '|' + job_time_hr + ':' + job_time_min + '|' + job_duration + '|' + job_builton + '|' + job_result + '|' + job_url + '|' + job_trigger + '|' + job_triggered_by + '\n')
+                job_run_file.write(
+                    build_xml_file_name + '|' + job_key + '|' + job_name + '|' + job_number + '|' + job_duration + '|' + job_builton + '|' + job_result + '|' + job_date + '|' + job_time_hr + '|' + job_time_min + '|' + job_url + '|' + job_trigger + '|' + job_triggered_by + '|' + "\n")
 
     audit_log_file.close()
     job_run_file.close()
@@ -234,18 +248,22 @@ def generate_build_xml_file_list_dump(run_date, run_timestamp, top_level_folder_
 
 
 def process_job_run_details(run_date, run_timestamp, jobs_output_data_folder, all_jobs, all_job_runs):
-
     # define variables to capture overall data
     total_num_of_job_runs = 0
+    total_num_of_scheduled_job_runs = 0
+    total_num_of_manual_job_runs = 0
+    job_users = {}
     job_runs = {}
     job_runs_by_org = {}
     job_results = {}
     nodes = {}
     total_num_of_jobs_by_hr = {
-                    '00': 0, '01': 0, '02': 0, '03': 0, '04': 0, '05': 0, '06': 0, '07': 0, '08': 0, '09': 0, '10': 0, '11': 0, '12': 0,
-                    '13': 0, '14': 0, '15': 0, '16': 0, '17': 0, '18': 0, '19': 0, '20': 0, '21': 0, '22': 0, '23': 0
-                    }
-    
+        '00': 0, '01': 0, '02': 0, '03': 0, '04': 0, '05': 0, '06': 0, '07': 0, '08': 0, '09': 0, '10': 0, '11': 0,
+        '12': 0,
+        '13': 0, '14': 0, '15': 0, '16': 0, '17': 0, '18': 0, '19': 0, '20': 0, '21': 0, '22': 0, '23': 0
+    }
+
+
 
     # Process all build.xml files in all-runs.txt and set up dictionary of dictionaries data structure
     audit_log_file = open(jobs_output_data_folder + run_timestamp + '/' + 'job-run-details.txt', 'w')
@@ -260,34 +278,44 @@ def process_job_run_details(run_date, run_timestamp, jobs_output_data_folder, al
         job_date = jr['job_date']
         job_time_hr = jr['job_time_hr']
         job_time_min = jr['job_time_min']
-        job_url = jr['job_key']
-        
-        # Create a total count of all the jobs
+        job_url = jr['job_url']
+        job_trigger = jr['job_trigger']
+        job_triggered_by = jr['job_triggered_by']
+
+        # Create a total count of all the jobs, scheduled and manual jobs
         total_num_of_job_runs = total_num_of_job_runs + 1
-        
+        if job_trigger == "Scheduled":
+            total_num_of_scheduled_job_runs = total_num_of_scheduled_job_runs + 1
+        else:
+            total_num_of_manual_job_runs = total_num_of_manual_job_runs + 1
+            if job_triggered_by not in job_users:
+                job_users[job_triggered_by] = 1
+            job_users[job_triggered_by] = job_users[job_triggered_by] + 1
+
         # Nodes Dictionary of Dictionaries
         if job_builton not in nodes:
-            nodes[job_builton] = { 
-            'time': {
-                '00': 0, '01': 0, '02': 0, '03': 0, '04': 0, '05': 0, '06': 0, '07': 0, '08': 0, '09': 0, '10': 0, '11': 0, '12': 0,
-                '13': 0, '14': 0, '15': 0, '16': 0, '17': 0, '18': 0, '19': 0, '20': 0, '21': 0, '22': 0, '23': 0
-                }, 
-            'status': {
-                'Undef': 0, 'SUCCESS': 0, 'NOT_BUILT': 0, 'FAILURE': 0, 'UNSTABLE': 0, 'ABORTED': 0
-                }, 
-            'duration': {}
+            nodes[job_builton] = {
+                'time': {
+                    '00': 0, '01': 0, '02': 0, '03': 0, '04': 0, '05': 0, '06': 0, '07': 0, '08': 0, '09': 0, '10': 0,
+                    '11': 0, '12': 0,
+                    '13': 0, '14': 0, '15': 0, '16': 0, '17': 0, '18': 0, '19': 0, '20': 0, '21': 0, '22': 0, '23': 0
+                },
+                'status': {
+                    'Undef': 0, 'SUCCESS': 0, 'NOT_BUILT': 0, 'FAILURE': 0, 'UNSTABLE': 0, 'ABORTED': 0
+                },
+                'duration': {}
             }
         nodes[job_builton]['time'][job_time_hr] = nodes[job_builton]['time'][job_time_hr] + 1
         nodes[job_builton]['status'][job_result] = nodes[job_builton]['status'][job_result] + 1
-        if job_result == 'SUCCESS': 
+        if job_result == 'SUCCESS':
             nodes[job_builton]['duration'][job_url] = int(job_duration)
-        
+
         # Job Runs Count Dictionary
         if job_key not in job_runs:
             job_runs[job_key] = 1
         else:
             job_runs[job_key] = job_runs[job_key] + 1
-        
+
         # Job Result Dictionary
         if job_result not in job_results:
             job_results[job_result] = 1
@@ -303,15 +331,19 @@ def process_job_run_details(run_date, run_timestamp, jobs_output_data_folder, al
 
         # Total Number of Jobs by Hr
         total_num_of_jobs_by_hr[job_time_hr] = total_num_of_jobs_by_hr[job_time_hr] + 1
-    
+
     # Close the Audit log file
     audit_log_file.close()
 
     # Generate summary report
-    generate_ci_metrics_report(run_date, run_timestamp, all_jobs, total_num_of_job_runs, nodes, job_runs, job_results, job_runs_by_org, total_num_of_jobs_by_hr)
+    generate_ci_metrics_report(run_date, run_timestamp, all_jobs, total_num_of_job_runs, nodes, job_runs, job_results,
+                               job_runs_by_org, total_num_of_jobs_by_hr, total_num_of_scheduled_job_runs,
+                               total_num_of_manual_job_runs, job_users)
 
 
-def generate_ci_metrics_report(run_date, run_timestamp, all_jobs, total_num_of_job_runs, nodes, job_runs, job_results, job_runs_by_org, total_num_of_jobs_by_hr):
+def generate_ci_metrics_report(run_date, run_timestamp, all_jobs, total_num_of_job_runs, nodes, job_runs, job_results,
+                               job_runs_by_org, total_num_of_jobs_by_hr, total_num_of_scheduled_job_runs,
+                               total_num_of_manual_job_runs, job_users):
     # print(all_jobs)
 
     run_date_obj = datetime.datetime.strptime(run_date, '%Y-%m-%d').date()
@@ -325,7 +357,8 @@ def generate_ci_metrics_report(run_date, run_timestamp, all_jobs, total_num_of_j
     stoday = today.strftime('%Y-%m-%d')
     fragmentj1 = "Date of CI Job Metrics Report: " + yellow(stoday) + "\n"
     pfragmentj1 = "Date of CI Job Metrics Report: " + str(stoday) + "\n"
-    hfragmentj1 = "<strong style=\"color: navy\">Date of CI Job Metrics Report:</strong> " + "<strong style=\"color: blue\">" + str(stoday) + "</strong>" + "\n"
+    hfragmentj1 = "<strong style=\"color: navy\">Date of CI Job Metrics Report:</strong> " + "<strong style=\"color: blue\">" + str(
+        stoday) + "</strong>" + "\n"
     ci_metrics_report = ci_metrics_report + fragmentj1
     ci_metrics_report_plain = ci_metrics_report_plain + pfragmentj1
     ci_metrics_report_html = ci_metrics_report_html + hfragmentj1
@@ -347,7 +380,7 @@ def generate_ci_metrics_report(run_date, run_timestamp, all_jobs, total_num_of_j
     all_jobs_by_appscan_count = {}
     all_jobs_by_cdd_count = {}
     for job_key, job_details in all_jobs.items():
-        total_num_of_jobs = total_num_of_jobs + 1 
+        total_num_of_jobs = total_num_of_jobs + 1
 
         if job_details['org'] not in all_jobs_by_org_count:
             all_jobs_by_org_count[job_details['org']] = 1
@@ -371,22 +404,23 @@ def generate_ci_metrics_report(run_date, run_timestamp, all_jobs, total_num_of_j
 
         if job_details['scm'] not in all_jobs_by_scm_count:
             all_jobs_by_scm_count[job_details['scm']] = 1
-        else: 
+        else:
             all_jobs_by_scm_count[job_details['scm']] = all_jobs_by_scm_count[job_details['scm']] + 1
 
         if job_details['artifactory'] not in all_jobs_by_artifactory_count:
             all_jobs_by_artifactory_count[job_details['artifactory']] = 1
-        else: 
-            all_jobs_by_artifactory_count[job_details['artifactory']] = all_jobs_by_artifactory_count[job_details['artifactory']] + 1
+        else:
+            all_jobs_by_artifactory_count[job_details['artifactory']] = all_jobs_by_artifactory_count[
+                                                                            job_details['artifactory']] + 1
 
         if job_details['sonar'] not in all_jobs_by_sonar_count:
             all_jobs_by_sonar_count[job_details['sonar']] = 1
-        else: 
+        else:
             all_jobs_by_sonar_count[job_details['sonar']] = all_jobs_by_sonar_count[job_details['sonar']] + 1
 
         if job_details['appscan'] not in all_jobs_by_appscan_count:
             all_jobs_by_appscan_count[job_details['appscan']] = 1
-        else: 
+        else:
             all_jobs_by_appscan_count[job_details['appscan']] = all_jobs_by_appscan_count[job_details['appscan']] + 1
 
         if job_details['cdd'] not in all_jobs_by_cdd_count:
@@ -407,7 +441,8 @@ def generate_ci_metrics_report(run_date, run_timestamp, all_jobs, total_num_of_j
     stoday = today.strftime('%Y-%m-%d')
     fragmentj3 = "Total Number of Unique Jobs in CI: " + green(total_num_of_jobs) + "\n"
     pfragmentj3 = "Total Number of Unique Jobs in CI: " + str(total_num_of_jobs) + "\n"
-    hfragmentj3 = "<strong style=\"color: navy\">Total Number of Unique Jobs in CI:</strong> " + "<strong style=\"color: green\">" + str(total_num_of_jobs) + "</strong>" + "\n"
+    hfragmentj3 = "<strong style=\"color: navy\">Total Number of Unique Jobs in CI:</strong> " + "<strong style=\"color: green\">" + str(
+        total_num_of_jobs) + "</strong>" + "\n"
     ci_metrics_report = ci_metrics_report + fragmentj3
     ci_metrics_report_plain = ci_metrics_report_plain + pfragmentj3
     ci_metrics_report_html = ci_metrics_report_html + hfragmentj3
@@ -421,28 +456,35 @@ def generate_ci_metrics_report(run_date, run_timestamp, all_jobs, total_num_of_j
     pall_jobs_by_org_output = '\t\t'
     hall_jobs_by_org_output = '\t\t'
     org_count_index = 0
-    for job_org, job_org_count in sorted(all_jobs_by_org_count.iteritems(), key=lambda (k,v): (v, k), reverse=True):
-            if org_count_index < 3:
-                if job_org_count > 50:
-                    all_jobs_by_org_output = all_jobs_by_org_output + job_org + ' = ' + green(job_org_count) + ', '
-                    pall_jobs_by_org_output = pall_jobs_by_org_output + job_org + ' = ' + str(job_org_count) + ', '
-                    hall_jobs_by_org_output = hall_jobs_by_org_output + job_org + ' = ' + "<b>" + str(job_org_count) + "</b>" + ', '
-                else:
-                    all_jobs_by_org_output = all_jobs_by_org_output + job_org + ' = ' + str(job_org_count) + ', '
-                    pall_jobs_by_org_output = pall_jobs_by_org_output + job_org + ' = ' + str(job_org_count) + ', '
-                    hall_jobs_by_org_output = hall_jobs_by_org_output + job_org + ' = ' + str(job_org_count) + ', '
-                org_count_index = org_count_index + 1
+    for job_org, job_org_count in sorted(all_jobs_by_org_count.iteritems(), key=lambda (k, v): (v, k), reverse=True):
+        if org_count_index < 3:
+            if job_org_count > 50:
+                all_jobs_by_org_output = all_jobs_by_org_output + job_org + ' = ' + green(job_org_count) + ', '
+                pall_jobs_by_org_output = pall_jobs_by_org_output + job_org + ' = ' + str(job_org_count) + ', '
+                hall_jobs_by_org_output = hall_jobs_by_org_output + job_org + ' = ' + "<b>" + str(
+                    job_org_count) + "</b>" + ', '
             else:
-                org_count_index = 0
-                if job_org_count > 50:
-                    all_jobs_by_org_output = all_jobs_by_org_output.strip(', ') + "\n\t\t" + job_org + ' = ' + green(job_org_count) + ', '
-                    pall_jobs_by_org_output = pall_jobs_by_org_output.strip(', ') + "\n\t\t" + job_org + ' = ' + str(job_org_count) + ', '
-                    hall_jobs_by_org_output = hall_jobs_by_org_output.strip(', ') + "\n\t\t" + job_org + ' = ' + "<b>" + str(job_org_count) + "</b>" + ', '
-                else:
-                    all_jobs_by_org_output = all_jobs_by_org_output.strip(', ') + "\n\t\t" + job_org + ' = ' + str(job_org_count) + ', '
-                    pall_jobs_by_org_output = pall_jobs_by_org_output.strip(', ') + "\n\t\t" + job_org + ' = ' + str(job_org_count) + ', '
-                    hall_jobs_by_org_output = hall_jobs_by_org_output.strip(', ') + "\n\t\t" + job_org + ' = ' + str(job_org_count) + ', '
-                org_count_index = org_count_index + 1
+                all_jobs_by_org_output = all_jobs_by_org_output + job_org + ' = ' + str(job_org_count) + ', '
+                pall_jobs_by_org_output = pall_jobs_by_org_output + job_org + ' = ' + str(job_org_count) + ', '
+                hall_jobs_by_org_output = hall_jobs_by_org_output + job_org + ' = ' + str(job_org_count) + ', '
+            org_count_index = org_count_index + 1
+        else:
+            org_count_index = 0
+            if job_org_count > 50:
+                all_jobs_by_org_output = all_jobs_by_org_output.strip(', ') + "\n\t\t" + job_org + ' = ' + green(
+                    job_org_count) + ', '
+                pall_jobs_by_org_output = pall_jobs_by_org_output.strip(', ') + "\n\t\t" + job_org + ' = ' + str(
+                    job_org_count) + ', '
+                hall_jobs_by_org_output = hall_jobs_by_org_output.strip(
+                    ', ') + "\n\t\t" + job_org + ' = ' + "<b>" + str(job_org_count) + "</b>" + ', '
+            else:
+                all_jobs_by_org_output = all_jobs_by_org_output.strip(', ') + "\n\t\t" + job_org + ' = ' + str(
+                    job_org_count) + ', '
+                pall_jobs_by_org_output = pall_jobs_by_org_output.strip(', ') + "\n\t\t" + job_org + ' = ' + str(
+                    job_org_count) + ', '
+                hall_jobs_by_org_output = hall_jobs_by_org_output.strip(', ') + "\n\t\t" + job_org + ' = ' + str(
+                    job_org_count) + ', '
+            org_count_index = org_count_index + 1
     all_jobs_by_org_output = all_jobs_by_org_output.strip(', ') + "\n"
     pall_jobs_by_org_output = pall_jobs_by_org_output.strip(', ') + "\n"
     hall_jobs_by_org_output = hall_jobs_by_org_output.strip(', ') + "\n"
@@ -577,7 +619,8 @@ def generate_ci_metrics_report(run_date, run_timestamp, all_jobs, total_num_of_j
 
     fragment1 = "Date of CI Job Run Metrics Report: " + yellow(run_date) + "\n"
     pfragment1 = "Date of CI Job Run Metrics Report: " + str(run_date) + "\n"
-    hfragment1 = "<strong style=\"color: navy\">Date of CI Job Run Metrics Report:</strong> " + "<strong style=\"color: blue\">" + str(run_date) + "</strong>" + "\n"
+    hfragment1 = "<strong style=\"color: navy\">Date of CI Job Run Metrics Report:</strong> " + "<strong style=\"color: blue\">" + str(
+        run_date) + "</strong>" + "\n"
     ci_metrics_report = ci_metrics_report + fragment1
     ci_metrics_report_plain = ci_metrics_report_plain + pfragment1
     ci_metrics_report_html = ci_metrics_report_html + hfragment1
@@ -590,11 +633,12 @@ def generate_ci_metrics_report(run_date, run_timestamp, all_jobs, total_num_of_j
 
     fragment3 = "Total Number of Job Runs: " + green(total_num_of_job_runs) + "\n"
     pfragment3 = "Total Number of Job Runs: " + str(total_num_of_job_runs) + "\n"
-    hfragment3 = "<strong style=\"color: navy\">Total Number of Job Runs:</strong> " + "<strong style=\"color: green\">" + str(total_num_of_job_runs) + "</strong>" + "\n"
+    hfragment3 = "<strong style=\"color: navy\">Total Number of Job Runs:</strong> " + "<strong style=\"color: green\">" + str(
+        total_num_of_job_runs) + "</strong>" + "\n"
     ci_metrics_report = ci_metrics_report + fragment3
     ci_metrics_report_plain = ci_metrics_report_plain + pfragment3
     ci_metrics_report_html = ci_metrics_report_html + hfragment3
-    
+
     fragment4 = "\tJob Run Count By Build Status: "
     hfragment4 = "\t<span style=\" color: maroon\">By Job Run Count By Build Status:</span> "
     ci_metrics_report = ci_metrics_report + fragment4
@@ -604,17 +648,24 @@ def generate_ci_metrics_report(run_date, run_timestamp, all_jobs, total_num_of_j
     pjob_result_output = ''
     hjob_result_output = ''
     percent_value = 0
-    for job_result_type, job_result_frequency in sorted(job_results.iteritems(), key=lambda (k,v): (v, k), reverse=True):
+    for job_result_type, job_result_frequency in sorted(job_results.iteritems(), key=lambda (k, v): (v, k),
+            reverse=True):
         if job_result_type == 'SUCCESS':
-            percent_value = '%.2f' % (float(job_result_frequency)/total_num_of_job_runs * 100.0)
-            job_result_output = job_result_output + job_result_type + ' = ' + green(job_result_frequency) + '(' + green(percent_value) + '%)' + ', '
-            pjob_result_output = pjob_result_output + job_result_type + ' = ' + str(job_result_frequency) + '(' + str(percent_value) + ')' + ', '
-            hjob_result_output = hjob_result_output + job_result_type + ' = ' + "<strong style=\"color: green\">" + str(job_result_frequency) + "</strong> (" + "<strong style=\"color: green\">" + percent_value + "%</strong>)" +  ', '
+            percent_value = '%.2f' % (float(job_result_frequency) / total_num_of_job_runs * 100.0)
+            job_result_output = job_result_output + job_result_type + ' = ' + green(job_result_frequency) + '(' + green(
+                percent_value) + '%)' + ', '
+            pjob_result_output = pjob_result_output + job_result_type + ' = ' + str(job_result_frequency) + '(' + str(
+                percent_value) + ')' + ', '
+            hjob_result_output = hjob_result_output + job_result_type + ' = ' + "<strong style=\"color: green\">" + str(
+                job_result_frequency) + "</strong> (" + "<strong style=\"color: green\">" + percent_value + "%</strong>)" + ', '
         else:
-            percent_value = '%.2f' % (float(job_result_frequency)/total_num_of_job_runs * 100)
-            job_result_output = job_result_output + job_result_type + ' = ' + red(job_result_frequency) + '(' + red(percent_value) + '%)' + ', '
-            pjob_result_output = pjob_result_output + job_result_type + ' = ' + str(job_result_frequency) + '(' + str(percent_value) + ')' + ', '
-            hjob_result_output = hjob_result_output + job_result_type + ' = ' + "<span style=\"color: red\">" + str(job_result_frequency) + "</span> (" + "<span style=\"color: red\">" + percent_value + "%</span>)" +  ', '
+            percent_value = '%.2f' % (float(job_result_frequency) / total_num_of_job_runs * 100)
+            job_result_output = job_result_output + job_result_type + ' = ' + red(job_result_frequency) + '(' + red(
+                percent_value) + '%)' + ', '
+            pjob_result_output = pjob_result_output + job_result_type + ' = ' + str(job_result_frequency) + '(' + str(
+                percent_value) + ')' + ', '
+            hjob_result_output = hjob_result_output + job_result_type + ' = ' + "<span style=\"color: red\">" + str(
+                job_result_frequency) + "</span> (" + "<span style=\"color: red\">" + percent_value + "%</span>)" + ', '
     job_result_output = job_result_output.strip(', ') + "\n"
     pjob_result_output = pjob_result_output.strip(', ') + "\n"
     hjob_result_output = hjob_result_output.strip(', ') + "\n"
@@ -632,8 +683,10 @@ def generate_ci_metrics_report(run_date, run_timestamp, all_jobs, total_num_of_j
     hoverall_job_run_timeline_output = ''
     for hr in sorted(total_num_of_jobs_by_hr.keys()):
         if total_num_of_jobs_by_hr[hr] > 12:
-            overall_job_run_timeline_output = overall_job_run_timeline_output + red(str(total_num_of_jobs_by_hr[hr])) + '|'
-            hoverall_job_run_timeline_output = hoverall_job_run_timeline_output + "<span style=\"color: red\">" + str(total_num_of_jobs_by_hr[hr]) + '</span>|'
+            overall_job_run_timeline_output = overall_job_run_timeline_output + red(
+                str(total_num_of_jobs_by_hr[hr])) + '|'
+            hoverall_job_run_timeline_output = hoverall_job_run_timeline_output + "<span style=\"color: red\">" + str(
+                total_num_of_jobs_by_hr[hr]) + '</span>|'
         else:
             overall_job_run_timeline_output = overall_job_run_timeline_output + str(total_num_of_jobs_by_hr[hr]) + '|'
             hoverall_job_run_timeline_output = hoverall_job_run_timeline_output + str(total_num_of_jobs_by_hr[hr]) + '|'
@@ -644,11 +697,32 @@ def generate_ci_metrics_report(run_date, run_timestamp, all_jobs, total_num_of_j
 
     fragment6 = "\tJobs That Ran: " + green(len(job_runs)) + "\n"
     pfragment6 = "\tJobs That Ran: " + str(len(job_runs)) + "\n"
-    hfragment6 = "\t<span style=\" color: maroon\">Jobs That Ran:</span> " + "<strong style=\"color: green\">" + str(len(job_runs)) + "</strong>" + "\n"
+    hfragment6 = "\t<span style=\" color: maroon\">Jobs That Ran:</span> " + "<strong style=\"color: green\">" + str(
+        len(job_runs)) + "</strong>" + "\n"
     ci_metrics_report = ci_metrics_report + fragment6
     ci_metrics_report_plain = ci_metrics_report_plain + pfragment6
     ci_metrics_report_html = ci_metrics_report_html + hfragment6
- 
+
+    fragment6a = "\tJob Runs that were Scheduled / Manually Run: " + green(
+        total_num_of_scheduled_job_runs) + ' / ' + green(total_num_of_manual_job_runs) + "\n"
+    pfragment6a = "\tJob Runs that were Scheduled / Manually Run: " + str(
+        total_num_of_scheduled_job_runs) + ' / ' + str(total_num_of_manual_job_runs) + "\n"
+    hfragment6a = "\t<span style=\" color: maroon\">Job Runs that were Scheduled / Manually Run:</span> " + "<strong style=\"color: green\">" + str(
+        total_num_of_scheduled_job_runs) + "</strong> / " + "<strong style=\"color: green\">" + str(
+        total_num_of_manual_job_runs) + "</strong>" + "\n"
+    ci_metrics_report = ci_metrics_report + fragment6a
+    ci_metrics_report_plain = ci_metrics_report_plain + pfragment6a
+    ci_metrics_report_html = ci_metrics_report_html + hfragment6a
+
+    fragment6b = "\tTotal Number of Cisco Users who manually ran a Job: " + green(len(job_users)) + "\n"
+    pfragment6b = "\tTotal Number of Cisco Users who manually ran a Job: " + str(len(job_users)) + "\n"
+    hfragment6b = "\t<span style=\" color: maroon\">Total Number of Cisco Users who manually ran a Job:</span> " + "<strong style=\"color: green\">" + str(
+        len(job_users)) + "</strong> /" + "<strong style=\"color: green\">" + str(
+        total_num_of_manual_job_runs) + "</strong>" + "\n"
+    ci_metrics_report = ci_metrics_report + fragment6b
+    ci_metrics_report_plain = ci_metrics_report_plain + pfragment6b
+    ci_metrics_report_html = ci_metrics_report_html + hfragment6b
+
     fragment7 = "Top 5 Orgs, by Job Runs:" + "\n"
     hfragment7 = "<strong style=\"color: navy\">Top 5 Orgs, by Job Runs:</strong> " + "\n"
     ci_metrics_report = ci_metrics_report + fragment7
@@ -658,15 +732,16 @@ def generate_ci_metrics_report(run_date, run_timestamp, all_jobs, total_num_of_j
     top5_orgs_output = ''
     ptop5_orgs_output = ''
     htop5_orgs_output = ''
-    for job_org, job_org_run in sorted(job_runs_by_org.iteritems(), key=lambda (k,v): (v, k), reverse=True):
+    for job_org, job_org_run in sorted(job_runs_by_org.iteritems(), key=lambda (k, v): (v, k), reverse=True):
         job_org_count = job_org_count + 1
         if job_org_count < 6:
             if job_org_count == 1:
                 top5_orgs_output = top5_orgs_output + "\t" + job_org + " = " + green(job_org_run) + "\n"
-                htop5_orgs_output = htop5_orgs_output + "\t" + job_org + " = " + "<span style=\"color: green\">" + str(job_org_run) + "</span>" + "\n"
+                htop5_orgs_output = htop5_orgs_output + "\t" + job_org + " = " + "<span style=\"color: green\">" + str(
+                    job_org_run) + "</span>" + "\n"
             else:
                 top5_orgs_output = top5_orgs_output + "\t" + job_org + " = " + str(job_org_run) + "\n"
-                htop5_orgs_output = htop5_orgs_output + "\t" + job_org + " = " +  str(job_org_run) + "\n"
+                htop5_orgs_output = htop5_orgs_output + "\t" + job_org + " = " + str(job_org_run) + "\n"
             ptop5_orgs_output = ptop5_orgs_output + "\t" + job_org + " = " + str(job_org_run) + "\n"
     ci_metrics_report = ci_metrics_report + top5_orgs_output
     ci_metrics_report_plain = ci_metrics_report_plain + ptop5_orgs_output
@@ -681,15 +756,16 @@ def generate_ci_metrics_report(run_date, run_timestamp, all_jobs, total_num_of_j
     ptop5_jobs_output = ''
     htop5_jobs_output = ''
     job_count = 0
-    for job, job_run in sorted(job_runs.iteritems(), key=lambda (k,v): (v, k), reverse=True):
+    for job, job_run in sorted(job_runs.iteritems(), key=lambda (k, v): (v, k), reverse=True):
         job_count = job_count + 1
         if job_count < 6:
             if job_count == 1:
                 top5_jobs_output = top5_jobs_output + "\t" + job + " = " + green(job_run) + "\n"
-                htop5_jobs_output = htop5_jobs_output + "\t" + job + " = " + "<span style=\"color: green\">" + str(job_run) + "</span>" + "\n"
+                htop5_jobs_output = htop5_jobs_output + "\t" + job + " = " + "<span style=\"color: green\">" + str(
+                    job_run) + "</span>" + "\n"
             else:
                 top5_jobs_output = top5_jobs_output + "\t" + job + " = " + str(job_run) + "\n"
-                htop5_jobs_output = htop5_jobs_output + "\t" + job + " = " +  str(job_run) + "\n"
+                htop5_jobs_output = htop5_jobs_output + "\t" + job + " = " + str(job_run) + "\n"
             ptop5_jobs_output = ptop5_jobs_output + "\t" + job + " = " + str(job_run) + "\n"
     ci_metrics_report = ci_metrics_report + top5_jobs_output
     ci_metrics_report_plain = ci_metrics_report_plain + ptop5_jobs_output
@@ -714,29 +790,39 @@ def generate_ci_metrics_report(run_date, run_timestamp, all_jobs, total_num_of_j
             node_total_count = node_total_count + node_stats_type['time'][hr]
             if node_stats_type['time'][hr] != 0 and node_stats_type['time'][hr] > 12:
                 node_hourly_output = node_hourly_output + red(str(node_stats_type['time'][hr])) + '|'
-                hnode_hourly_output = hnode_hourly_output + "<span style=\"color: red\">" + str(node_stats_type['time'][hr]) + "</span>" + '|'
+                hnode_hourly_output = hnode_hourly_output + "<span style=\"color: red\">" + str(
+                    node_stats_type['time'][hr]) + "</span>" + '|'
             else:
                 node_hourly_output = node_hourly_output + str(node_stats_type['time'][hr]) + '|'
-                hnode_hourly_output = hnode_hourly_output + str(node_stats_type['time'][hr]) +  '|'
+                hnode_hourly_output = hnode_hourly_output + str(node_stats_type['time'][hr]) + '|'
             pnode_hourly_output = pnode_hourly_output + str(node_stats_type['time'][hr]) + '|'
         node_hourly_output = node_hourly_output + "\n"
         pnode_hourly_output = pnode_hourly_output + "\n"
         hnode_hourly_output = hnode_hourly_output + "\n"
 
         # Job Run Count Output By Node
-        fragment10 = "\tTotal Job Runs on Node \"" +  node + "\" = " + green(node_total_count) + "\n"
-        pfragment10 = "\tTotal Job Runs on Node \"" +  node + "\" = " + str(node_total_count) + "\n"
-        hfragment10 = "\t<span style=\"color: maroon\">Total Job Runs on Node <strong>" +  node + "</strong></span> = " + "<span style=\"color: green\">" + str(node_total_count) + "</span>" + "\n"
+        fragment10 = "\tTotal Job Runs on Node \"" + node + "\" = " + green(node_total_count) + "\n"
+        pfragment10 = "\tTotal Job Runs on Node \"" + node + "\" = " + str(node_total_count) + "\n"
+        hfragment10 = "\t<span style=\"color: maroon\">Total Job Runs on Node <strong>" + node + "</strong></span> = " + "<span style=\"color: green\">" + str(
+            node_total_count) + "</span>" + "\n"
         ci_metrics_report = ci_metrics_report + fragment10
         ci_metrics_report_plain = ci_metrics_report_plain + pfragment10
         ci_metrics_report_html = ci_metrics_report_html + hfragment10
-        node_count_stats_output = "\t\tJob Run Count Stats: Max Job Runs per Hr = " + magenta(node_max_count) + ", Min Job Runs per Hr = " + magenta(node_min_count) + ", 50th-percentile = " + magenta(node_count_p50) + ", 75th-percentile = " + magenta(node_count_p75) + "\n"
-        pnode_count_stats_output = "\t\tJob Run Count Stats: Max Job Runs per Hr = " + str(node_max_count) + ", Min Job Runs per Hr = " + str(node_min_count) + ", 50th-percentile = " + str(node_count_p50) + ", 75th-percentile = " + str(node_count_p75) + "\n"
-        hnode_count_stats_output = "\t\t<i>Job Run Count Stats:</i> Max Job Runs per Hr = " + "<span style=\"color: teal\">" + str(node_max_count) + "</span>, Min Job Runs per Hr = " + "<span style=\"color: teal\">" + str(node_min_count) + "</span>, 50th-percentile = " + "<span style=\"color: teal\">" + str(node_count_p50) + "</span>, 75th-percentile = " + "<span style=\"color: teal\">" + str(node_count_p75) + "</span>\n"
+        node_count_stats_output = "\t\tJob Run Count Stats: Max Job Runs per Hr = " + magenta(
+            node_max_count) + ", Min Job Runs per Hr = " + magenta(node_min_count) + ", 50th-percentile = " + magenta(
+            node_count_p50) + ", 75th-percentile = " + magenta(node_count_p75) + "\n"
+        pnode_count_stats_output = "\t\tJob Run Count Stats: Max Job Runs per Hr = " + str(
+            node_max_count) + ", Min Job Runs per Hr = " + str(node_min_count) + ", 50th-percentile = " + str(
+            node_count_p50) + ", 75th-percentile = " + str(node_count_p75) + "\n"
+        hnode_count_stats_output = "\t\t<i>Job Run Count Stats:</i> Max Job Runs per Hr = " + "<span style=\"color: teal\">" + str(
+            node_max_count) + "</span>, Min Job Runs per Hr = " + "<span style=\"color: teal\">" + str(
+            node_min_count) + "</span>, 50th-percentile = " + "<span style=\"color: teal\">" + str(
+            node_count_p50) + "</span>, 75th-percentile = " + "<span style=\"color: teal\">" + str(
+            node_count_p75) + "</span>\n"
         ci_metrics_report = ci_metrics_report + node_count_stats_output
         ci_metrics_report_plain = ci_metrics_report_plain + pnode_count_stats_output
         ci_metrics_report_html = ci_metrics_report_html + hnode_count_stats_output
-        
+
         # Build Status Count Output By Node
         node_status_output = '\t\tJob Run Count By Build Status: '
         pnode_status_output = '\t\tJob Run Count By Build Status: '
@@ -744,7 +830,8 @@ def generate_ci_metrics_report(run_date, run_timestamp, all_jobs, total_num_of_j
         for st in node_stats_type['status'].keys():
             node_status_output = node_status_output + st + ' = ' + blue(node_stats_type['status'][st]) + ', '
             pnode_status_output = pnode_status_output + st + ' = ' + str(node_stats_type['status'][st]) + ', '
-            hnode_status_output = hnode_status_output + st + ' = ' + "<span style=\"color: teal\">" + str(node_stats_type['status'][st]) + "</span>" + ', '
+            hnode_status_output = hnode_status_output + st + ' = ' + "<span style=\"color: teal\">" + str(
+                node_stats_type['status'][st]) + "</span>" + ', '
         node_status_output = node_status_output.strip(', ') + "\n"
         pnode_status_output = pnode_status_output.strip(', ') + "\n"
         hnode_status_output = hnode_status_output.strip(', ') + "\n"
@@ -757,7 +844,8 @@ def generate_ci_metrics_report(run_date, run_timestamp, all_jobs, total_num_of_j
         if len(node_duration_values) > 0:
             node_max_duration_msec = max(node_duration_values)
             node_max_duration = user_friendly_secs(node_max_duration_msec)
-            node_max_duration_url = get_job_url_by_duration(node_stats_type['duration'], node_max_duration_msec) + '/console'
+            node_max_duration_url = get_job_url_by_duration(node_stats_type['duration'],
+                                                            node_max_duration_msec) + '/console'
             node_min_duration = user_friendly_secs(min(node_duration_values))
             node_duration_p50, node_duration_p75 = get_percentiles(node_duration_values)
             node_duration_p50 = user_friendly_secs(node_duration_p50)
@@ -768,28 +856,34 @@ def generate_ci_metrics_report(run_date, run_timestamp, all_jobs, total_num_of_j
             node_min_duration = 'NA'
             node_duration_p50 = 'NA'
             node_duration_p75 = 'NA'
-        node_duration_output = '\t\tJob Run Duration Stats of Successful Job Runs (in mins): Max Duration = ' + cyan(node_max_duration) + ', Min Duration = ' + cyan(node_min_duration) + ', 50th-percentile = ' + cyan(node_duration_p50) + ', 75th-percentile = ' + cyan(node_duration_p75) + '\n'
+        node_duration_output = '\t\tJob Run Duration Stats of Successful Job Runs (in mins): Max Duration = ' + cyan(
+            node_max_duration) + ', Min Duration = ' + cyan(node_min_duration) + ', 50th-percentile = ' + cyan(
+            node_duration_p50) + ', 75th-percentile = ' + cyan(node_duration_p75) + '\n'
         node_duration_output = node_duration_output + '\t\tConsole Output URL of Job Run with Max Duration (' + node_max_duration + ' mins): ' + node_max_duration_url + '\n'
-        pnode_duration_output = '\t\tJob Run Duration Stats of Successful Job Runs (in mins): Max Duration = ' + str(node_max_duration) + ', Min Duration = ' + str(node_min_duration) + ', 50th-percentile = ' + str(node_duration_p50) + ', 75th-percentile = ' + str(node_duration_p75) + '\n'
+        pnode_duration_output = '\t\tJob Run Duration Stats of Successful Job Runs (in mins): Max Duration = ' + str(
+            node_max_duration) + ', Min Duration = ' + str(node_min_duration) + ', 50th-percentile = ' + str(
+            node_duration_p50) + ', 75th-percentile = ' + str(node_duration_p75) + '\n'
         pnode_duration_output = pnode_duration_output + '\t\tConsole Output URL of Job Run with Max Duration (' + node_max_duration + ' mins): ' + node_max_duration_url + '\n'
-        hnode_duration_output = '\t\t<i>Job Run Duration Stats of Successful Job Runs (in mins):</i> Max Duration = ' + "<span style=\"color: red\">" + str(node_max_duration) + '</span>, Min Duration = ' + str(node_min_duration) + ', 50th-percentile = ' + "<span style=\"color: red\">" + str(node_duration_p50) + '</span>, 75th-percentile = ' + str(node_duration_p75) + '\n'
+        hnode_duration_output = '\t\t<i>Job Run Duration Stats of Successful Job Runs (in mins):</i> Max Duration = ' + "<span style=\"color: red\">" + str(
+            node_max_duration) + '</span>, Min Duration = ' + str(
+            node_min_duration) + ', 50th-percentile = ' + "<span style=\"color: red\">" + str(
+            node_duration_p50) + '</span>, 75th-percentile = ' + str(node_duration_p75) + '\n'
         hnode_duration_output = hnode_duration_output + '\t\t<i>Console Output URL of Job Run with Max Duration (' + "<span style=\"color: red\">" + node_max_duration + ' mins</span>):</i> ' + "<a href=\"" + node_max_duration_url + "\">" + node_max_duration_url + "</a>" + '\n'
         ci_metrics_report = ci_metrics_report + node_duration_output
         ci_metrics_report_plain = ci_metrics_report_plain + pnode_duration_output
         ci_metrics_report_html = ci_metrics_report_html + hnode_duration_output
-        
+
         # Timeline Output By Node
         ci_metrics_report = ci_metrics_report + node_hourly_output
         ci_metrics_report_plain = ci_metrics_report_plain + pnode_hourly_output
         ci_metrics_report_html = ci_metrics_report_html + pnode_hourly_output
-
 
     ci_metrics_report = ci_metrics_report + '*' * 150 + "\n"
     ci_metrics_report_plain = ci_metrics_report_plain + '*' * 150 + "\n"
     ci_metrics_report_html = ci_metrics_report_html + "</pre>" + "\n"
     ci_metrics_report_html = ci_metrics_report_html + html_footer()
 
-    print(ci_metrics_report,end='')
+    print(ci_metrics_report, end='')
     summary = open(jobs_summary_report_filename, 'w')
     summary.write(ci_metrics_report)
     summary.close()
@@ -803,13 +897,13 @@ def send_ci_report_in_email(run_date, ci_metrics_report_plain, ci_metrics_report
     # email_pwd = ""
     from_user = "anasharm@cisco.com"
     to_users = "anasharm@cisco.com, anand.sharma@gmail.com"
-    #to_users = "cd-analytics@cisco.com"
+    # to_users = "cd-analytics@cisco.com"
     subject = "CI Job Run Summary Report for " + run_date
 
     msg = MIMEMultipart('alternative')
     msg['Subject'] = subject
     msg['From'] = from_user
-    msg['To'] =  to_users
+    msg['To'] = to_users
 
     # Create the body of the message (a plain-text and an HTML version)
     text = ci_metrics_report_plain
@@ -888,7 +982,7 @@ def get_percentiles(list_of_numbers):
     return p50, p75
 
 
-def percentile(N, percent, key=lambda x:x):
+def percentile(N, percent, key=lambda x: x):
     """
     Find the percentile of a list of values.
 
@@ -900,14 +994,14 @@ def percentile(N, percent, key=lambda x:x):
     """
     if not N:
         return None
-    k = (len(N)-1) * percent
+    k = (len(N) - 1) * percent
     f = math.floor(k)
     c = math.ceil(k)
     if f == c:
         return key(N[int(k)])
-    d0 = key(N[int(f)]) * (c-k)
-    d1 = key(N[int(c)]) * (k-f)
-    return d0+d1
+    d0 = key(N[int(f)]) * (c - k)
+    d1 = key(N[int(c)]) * (k - f)
+    return d0 + d1
 
 
 def parse_xml_file(build_xml_file_name):
@@ -933,7 +1027,18 @@ def parse_xml_file(build_xml_file_name):
                 job_number = child.text
                 if job_number is None:
                     job_number = "Undef"
-    return job_number, job_duration, job_builton, job_result, process_build_status
+
+        job_trigger = "Undef"
+        job_triggered_by = "Undef"
+        for trigger in root.iter('hudson.model.Cause_-UserIdCause'):
+            job_trigger = "Manual"
+            for child in trigger:
+                if child.tag == 'userId' and child.text is not None:
+                    job_triggered_by = child.text
+        for trigger in root.iter('hudson.triggers.TimerTrigger_-TimerTriggerCause'):
+            job_trigger = "Scheduled"
+
+    return job_number, job_duration, job_builton, job_result, job_trigger, job_triggered_by, process_build_status
 
 
 def get_job_basics(job_run, top_level_folder_path):
@@ -949,7 +1054,7 @@ def get_job_basics(job_run, top_level_folder_path):
 def get_job_run_basics(job_run, top_level_folder_path):
     job_key, job_name, job_date, job_time_hr, job_time_min, job_run_basics_status = "Undef", "Undef", "Undef", "Undef", "Undef", "_ERR_"
     line_tokens = job_run.split('/')
-    inside_modules = is_inside_modules(job_run) 
+    inside_modules = is_inside_modules(job_run)
     if line_tokens[-3] == 'builds' and not inside_modules:
         job_run_basics_status = "SUCCESS"
         job_key = get_job_key_for_job_runs(job_run, top_level_folder_path)
@@ -1064,7 +1169,7 @@ def get_job_url_by_duration(node_duration_dict, node_max_duration_msec):
         if duration == node_max_duration_msec:
             job_url = url
             break
-    return job_url    
+    return job_url
 
 
 def print_usage_and_exit():
@@ -1074,13 +1179,13 @@ def print_usage_and_exit():
 
 
 if __name__ == "__main__":
-    
+
     if len(sys.argv) < 2:
         print_usage_and_exit()
     else:
         # Create the folder for storing CI Metrics and Audits
         top_level_folder_path = os.path.abspath(sys.argv[1])
-        
+
         # Grab or Derive the Start Date
         if len(sys.argv) > 2:
             start_date = sys.argv[2]
@@ -1091,7 +1196,7 @@ if __name__ == "__main__":
 
         # Grab or Derive the End Date
         if len(sys.argv) > 3:
-                end_date = sys.argv[3]
+            end_date = sys.argv[3]
         else:
             end_date = start_date
         end_date_obj = datetime.datetime.strptime(end_date, '%Y-%m-%d').date()
@@ -1102,13 +1207,13 @@ if __name__ == "__main__":
             for d in range(delta.days + 1):
                 run_date_obj = start_date_obj + datetime.timedelta(days=d)
                 run_date = run_date_obj.strftime('%Y-%m-%d')
-                
+
                 # Get a timestamp for all the logs
                 ts = time.time()
                 run_timestamp = datetime.datetime.fromtimestamp(ts).strftime('%Y-%m-%d_%H-%M-%S')
 
                 # Get the run_date and run_timestamp folder created under audit, if it does not exist
-                jobs_output_data_folder = os.getcwd() + '/ci-metrics-python/' + run_date + '/' 
+                jobs_output_data_folder = os.getcwd() + '/ci-metrics-python/' + run_date + '/'
                 run_timestamp_folder = jobs_output_data_folder + run_timestamp + '/'
                 if not os.path.exists(run_timestamp_folder):
                     os.makedirs(run_timestamp_folder)
@@ -1119,10 +1224,12 @@ if __name__ == "__main__":
 
                 # Get Jobs Metrics
                 generate_config_xml_file_list(top_level_folder_path, all_jobs_file, run_date)
-                all_jobs = process_config_xml_file_list(run_date, top_level_folder_path, run_timestamp, all_jobs_file, jobs_output_data_folder)
+                all_jobs = process_config_xml_file_list(run_date, top_level_folder_path, run_timestamp, all_jobs_file,
+                                                        jobs_output_data_folder)
 
                 # Get Job Runs Metrics
                 generate_build_xml_file_list(top_level_folder_path, all_runs_file, run_date)
-                generate_build_xml_file_list_dump(run_date, run_timestamp, top_level_folder_path, all_runs_file, jobs_output_data_folder, all_jobs)
+                generate_build_xml_file_list_dump(run_date, run_timestamp, top_level_folder_path, all_runs_file,
+                                                  jobs_output_data_folder, all_jobs)
         else:
             print_usage_and_exit()
