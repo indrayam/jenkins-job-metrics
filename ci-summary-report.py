@@ -1188,17 +1188,25 @@ if __name__ == "__main__":
 
         # Grab or Derive the Start Date
         if len(sys.argv) > 2:
-            start_date = sys.argv[2]
+            start_date_str = sys.argv[2]
+            if start_date_str == 'today':
+                start_date = datetime.date.today()
+                start_date_str = start_date.strftime('%Y-%m-%d')
+            elif start_date_str == 'yesterday':
+                start_date = datetime.date.today() - datetime.timedelta(1)
+                start_date_str = start_date.strftime('%Y-%m-%d')
+            else:
+                start_date = datetime.datetime.strptime(start_date_str, '%Y-%m-%d').date()
         else:
-            yesterday = datetime.date.today() - datetime.timedelta(1)
-            start_date = yesterday.strftime('%Y-%m-%d')
-        start_date_obj = datetime.datetime.strptime(start_date, '%Y-%m-%d').date()
+            start_date = datetime.date.today() - datetime.timedelta(1)
+            start_date_str = start_date.strftime('%Y-%m-%d')
+        start_date_obj = start_date
 
         # Grab or Derive the End Date
         if len(sys.argv) > 3:
             end_date = sys.argv[3]
         else:
-            end_date = start_date
+            end_date = start_date_str
         end_date_obj = datetime.datetime.strptime(end_date, '%Y-%m-%d').date()
 
         # Make sure the End Date is same or ahead of Start Date 
