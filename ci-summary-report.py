@@ -290,7 +290,7 @@ def process_job_run_details(run_date, run_timestamp, jobs_output_data_folder, al
         else:
             total_num_of_manual_job_runs = total_num_of_manual_job_runs + 1
             if job_triggered_by not in job_users:
-                job_users[job_triggered_by] = 1
+                job_users[job_triggered_by] = 0
             job_users[job_triggered_by] = job_users[job_triggered_by] + 1
 
         # Nodes Dictionary of Dictionaries
