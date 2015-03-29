@@ -724,6 +724,30 @@ def generate_ci_metrics_report(run_date, run_timestamp, all_jobs, total_num_of_j
     ci_metrics_report_plain = ci_metrics_report_plain + pfragment6b
     ci_metrics_report_html = ci_metrics_report_html + hfragment6b
 
+    fragment6c = "Top 5 Users, by Job Runs (Manually):" + "\n"
+    hfragment6c = "<strong style=\"color: navy\">Top 5 Users, by Job Runs (Manually):</strong> " + "\n"
+    ci_metrics_report = ci_metrics_report + fragment6c
+    ci_metrics_report_plain = ci_metrics_report_plain + fragment6c
+    ci_metrics_report_html = ci_metrics_report_html + hfragment6c
+    job_user_count = 0
+    top5_user_output = ''
+    ptop5_user_output = ''
+    htop5_user_output = ''
+    for job_user_id, job_run_frequency in sorted(job_users.iteritems(), key=lambda (k, v): (v, k), reverse=True):
+        job_user_count = job_user_count + 1
+        if job_user_count < 6:
+            if job_user_count == 1:
+                top5_user_output = top5_user_output + "\t" + job_user_id + " = " + green(job_run_frequency) + "\n"
+                htop5_user_output = htop5_user_output + "\t<a href=\"http://wwwin-tools.cisco.com/dir/details/" + job_user_id + "\">" + job_user_id + "</a> = " + "<span style=\"color: green\">" + str(
+                    job_run_frequency) + "</span>" + "\n"
+            else:
+                top5_user_output = top5_user_output + "\t" + job_user_id + " = " + str(job_run_frequency) + "\n"
+                htop5_user_output = htop5_user_output + "\t<a href=\"http://wwwin-tools.cisco.com/dir/details/" + job_user_id + "\">" + job_user_id + "</a> = " + str(job_run_frequency) + "\n"
+            ptop5_user_output = ptop5_user_output + "\t" + job_user_id + " = " + str(job_run_frequency) + "\n"
+    ci_metrics_report = ci_metrics_report + top5_user_output
+    ci_metrics_report_plain = ci_metrics_report_plain + ptop5_user_output
+    ci_metrics_report_html = ci_metrics_report_html + htop5_user_output
+
     fragment7 = "Top 5 Orgs, by Job Runs:" + "\n"
     hfragment7 = "<strong style=\"color: navy\">Top 5 Orgs, by Job Runs:</strong> " + "\n"
     ci_metrics_report = ci_metrics_report + fragment7
