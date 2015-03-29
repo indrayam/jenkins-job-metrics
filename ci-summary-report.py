@@ -713,8 +713,7 @@ def generate_ci_metrics_report(run_date, run_timestamp, all_jobs, total_num_of_j
     fragment6b = "\tTotal Number of Cisco Users who manually ran a Job: " + green(len(job_users)) + "\n"
     pfragment6b = "\tTotal Number of Cisco Users who manually ran a Job: " + str(len(job_users)) + "\n"
     hfragment6b = "\t<span style=\" color: maroon\">Total Number of Cisco Users who manually ran a Job:</span> " + "<strong style=\"color: green\">" + str(
-        len(job_users)) + "</strong> /" + "<strong style=\"color: green\">" + str(
-        total_num_of_manual_job_runs) + "</strong>" + "\n"
+        len(job_users)) + "</strong>" + "\n"
     ci_metrics_report = ci_metrics_report + fragment6b
     ci_metrics_report_plain = ci_metrics_report_plain + pfragment6b
     ci_metrics_report_html = ci_metrics_report_html + hfragment6b
