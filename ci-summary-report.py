@@ -918,7 +918,6 @@ def generate_ci_metrics_report(run_date, run_timestamp, all_jobs, total_num_of_j
     # Send the CI Metrics Report as Email
     if encpwd != '':
         send_ci_report_in_email(run_date, ci_metrics_report_plain, ci_metrics_report_html, job_cron_type, encpwd)
-        
 
 
 def send_ci_report_in_email(run_date, ci_metrics_report_plain, ci_metrics_report_html, job_cron_type, encpwd):
@@ -927,10 +926,13 @@ def send_ci_report_in_email(run_date, ci_metrics_report_plain, ci_metrics_report
     from_user = "anasharm@cisco.com"
     if job_cron_type == 'daily':
         to_users = "cd-analytics@cisco.com"
+        subject = "CI Job Run Daily Summary Report for " + run_date
+    elif job_cron_type == 'hourly':
+        to_users = "anasharm@cisco.com"
+        subject = "CI Job Run Hourly Summary Report for " + run_date
     else:
         to_users = "anasharm@cisco.com"
-
-    subject = "CI Job Run Summary Report for " + run_date
+        subject = "CI Job Run Summary Report for " + run_date
 
     msg = MIMEMultipart('alternative')
     msg['Subject'] = subject
