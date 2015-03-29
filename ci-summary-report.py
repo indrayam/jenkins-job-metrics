@@ -331,6 +331,12 @@ def process_job_run_details(run_date, run_timestamp, jobs_output_data_folder, al
         # Total Number of Jobs by Hr
         total_num_of_jobs_by_hr[job_time_hr] = total_num_of_jobs_by_hr[job_time_hr] + 1
 
+    # Store the number of users during this run
+    job_users_log_file = open(jobs_output_data_folder + run_timestamp + '/' + 'job-users.log', 'w')
+    for name, frequency in job_users.items():
+        job_users_log_file.write(name + ': ' + str(frequency) + '\n')
+    job_users_log_file.close()
+
     # Generate summary report
     generate_ci_metrics_report(run_date, run_timestamp, all_jobs, total_num_of_job_runs, nodes, job_runs, job_results,
                                job_runs_by_org, total_num_of_jobs_by_hr, total_num_of_scheduled_job_runs,
