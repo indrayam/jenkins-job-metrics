@@ -195,29 +195,7 @@ def generate_build_xml_file_list(top_level_folder_path, all_runs_file, run_date)
             print(err.decode('utf-8'), end='')
 
 
-def populate_job_run_details_hash(job_run_details_file):
-    job_run_details_hash = {}
-    with open(job_run_details_file, 'r') as job_run_file:
-        for job_run_line in job_run_file:
-            job_run_line = job_run_line.strip()
-            job_run_tokens_list = job_run_line.split('|')
-            job_run_details_hash[job_run_tokens_list[0]] = {'job_key': job_run_tokens_list[1],
-                                                            'job_name': job_run_tokens_list[2],
-                                                            'job_number': job_run_tokens_list[3],
-                                                            'job_duration': job_run_tokens_list[4],
-                                                            'job_builton': job_run_tokens_list[5],
-                                                            'job_result': job_run_tokens_list[6],
-                                                            'job_date': job_run_tokens_list[7],
-                                                            'job_time_hr': job_run_tokens_list[8],
-                                                            'job_time_min': job_run_tokens_list[9],
-                                                            'job_url': job_run_tokens_list[10],
-                                                            'job_trigger': job_run_tokens_list[11],
-                                                            'job_triggered_by': job_run_tokens_list[12],
-                                                            }
-    return job_run_details_hash
-
-
-def generate_build_xml_file_list_dump(run_date, run_timestamp, top_level_folder_path, all_runs_file,
+def process_build_xml_file_list(run_date, run_timestamp, top_level_folder_path, all_runs_file,
                                       jobs_output_data_folder, all_jobs, job_cron_type, encpwd):
     job_run_details_file = jobs_output_data_folder + run_date + '-job-runs.dmp'
     audit_log_file = open(jobs_output_data_folder + run_timestamp + '/' + 'job-run-audit.log', 'w')
@@ -248,10 +226,32 @@ def generate_build_xml_file_list_dump(run_date, run_timestamp, top_level_folder_
     audit_log_file.close()
     job_run_file.close()
     all_job_runs = populate_job_run_details_hash(job_run_details_file)
-    process_job_run_details(run_date, run_timestamp, jobs_output_data_folder, all_jobs, all_job_runs, job_cron_type, encpwd)
+    process_job_run_details_hash(run_date, run_timestamp, jobs_output_data_folder, all_jobs, all_job_runs, job_cron_type, encpwd)
 
 
-def process_job_run_details(run_date, run_timestamp, jobs_output_data_folder, all_jobs, all_job_runs, job_cron_type, encpwd):
+def populate_job_run_details_hash(job_run_details_file):
+    job_run_details_hash = {}
+    with open(job_run_details_file, 'r') as job_run_file:
+        for job_run_line in job_run_file:
+            job_run_line = job_run_line.strip()
+            job_run_tokens_list = job_run_line.split('|')
+            job_run_details_hash[job_run_tokens_list[0]] = {'job_key': job_run_tokens_list[1],
+                                                            'job_name': job_run_tokens_list[2],
+                                                            'job_number': job_run_tokens_list[3],
+                                                            'job_duration': job_run_tokens_list[4],
+                                                            'job_builton': job_run_tokens_list[5],
+                                                            'job_result': job_run_tokens_list[6],
+                                                            'job_date': job_run_tokens_list[7],
+                                                            'job_time_hr': job_run_tokens_list[8],
+                                                            'job_time_min': job_run_tokens_list[9],
+                                                            'job_url': job_run_tokens_list[10],
+                                                            'job_trigger': job_run_tokens_list[11],
+                                                            'job_triggered_by': job_run_tokens_list[12],
+                                                            }
+    return job_run_details_hash
+
+
+def process_job_run_details_hash(run_date, run_timestamp, jobs_output_data_folder, all_jobs, all_job_runs, job_cron_type, encpwd):
     # define variables to capture overall data
     total_num_of_job_runs = 0
     total_num_of_scheduled_job_runs = 0
@@ -340,12 +340,12 @@ def process_job_run_details(run_date, run_timestamp, jobs_output_data_folder, al
     job_users_log_file.close()
 
     # Generate summary report
-    generate_ci_metrics_report(run_date, run_timestamp, all_jobs, total_num_of_job_runs, nodes, job_runs, job_results,
+    generate_ci_summary_report(run_date, run_timestamp, all_jobs, total_num_of_job_runs, nodes, job_runs, job_results,
                                job_runs_by_org, total_num_of_jobs_by_hr, total_num_of_scheduled_job_runs,
                                total_num_of_manual_job_runs, job_users, job_cron_type, encpwd)
 
 
-def generate_ci_metrics_report(run_date, run_timestamp, all_jobs, total_num_of_job_runs, nodes, job_runs, job_results,
+def generate_ci_summary_report(run_date, run_timestamp, all_jobs, total_num_of_job_runs, nodes, job_runs, job_results,
                                job_runs_by_org, total_num_of_jobs_by_hr, total_num_of_scheduled_job_runs,
                                total_num_of_manual_job_runs, job_users, job_cron_type, encpwd):
     # print(all_jobs)
@@ -917,10 +917,10 @@ def generate_ci_metrics_report(run_date, run_timestamp, all_jobs, total_num_of_j
 
     # Send the CI Metrics Report as Email
     if encpwd != '':
-        send_ci_report_in_email(run_date, ci_metrics_report_plain, ci_metrics_report_html, job_cron_type, encpwd)
+        send_email(run_date, ci_metrics_report_plain, ci_metrics_report_html, job_cron_type, encpwd)
 
 
-def send_ci_report_in_email(run_date, ci_metrics_report_plain, ci_metrics_report_html, job_cron_type, encpwd):
+def send_email(run_date, ci_metrics_report_plain, ci_metrics_report_html, job_cron_type, encpwd):
     email_user = "anasharm@cisco.com"
     email_pwd = codecs.decode(encpwd, 'rot_13')
     from_user = "anasharm@cisco.com"
@@ -1209,17 +1209,18 @@ def get_job_url_by_duration(node_duration_dict, node_max_duration_msec):
 def get_args():
     '''This function parses command line arguments and returns them '''
     parser = argparse.ArgumentParser(
-        description='Generate Jenkins (CI Platform) Summary Report')
+        description='Generate Jenkins (CI Platform) Jobs and Job Runs Summary Report By Date (or Date Range')
     parser.add_argument(
         '-f', '--folder', type=str, help='Jenkins Jobs folder path', required=True)
     parser.add_argument(
-        '-ct', '--cron_type', type=str, help='Jenkins Job Type (hourly, daily or custom)', default='custom')
-    parser.add_argument(
         '-sd', '--start_date', type=str, help='Start date (YYYY-MM-DD format) or use strings like \'today\', \'yesterday\'')
     parser.add_argument(
-        '-ed', '--end_date', type=str, help='End date (YYYY-MM-DD format) or use strings like \'today\', \'yesterday\'')
+        '-ed', '--end_date', type=str, help='End date (YYYY-MM-DD format) or use strings like \'today\', \'yesterday\'. Make sure end date is after start date!')
+    parser.add_argument(
+        '-ct', '--cron_type', type=str, help='Jenkins Job Type (hourly, daily or custom)', default='custom')
     parser.add_argument(
         '-p', '--password', type=str, help='Encoded password for mail server', default='')
+
     args = parser.parse_args()
     job_folder = args.folder
     job_cron_type = args.cron_type
@@ -1228,6 +1229,8 @@ def get_args():
     password = args.password
 
     # If the cron type is 'daily', default start_date_str to yesterday
+    # If the cron type is 'hourly', default start_date_str to today
+    # Otherwise, use the values passed
     if job_cron_type == 'daily':
         start_date_str = 'yesterday'
         end_date_str = 'yesterday'
@@ -1244,6 +1247,8 @@ def get_args():
     else:
         start_date = datetime.datetime.strptime(start_date_str, '%Y-%m-%d').date()
 
+    # If no end_date_str was passed, set end_date_str to start_date_str
+    # Basically run the job for that date
     if end_date_str is None:
         end_date_str = start_date_str
         end_date = start_date
@@ -1256,43 +1261,46 @@ def get_args():
     else:
         end_date = datetime.datetime.strptime(end_date_str, '%Y-%m-%d').date()
 
-    #print(job_folder, job_cron_type, start_date_str, start_date, end_date_str, end_date)
+    # Throw an error if end_date is < start_date
+    if end_date < start_date:
+        print("You cannot pass a range where the end date is before the start date")
+        print("Run the program with -h for more details")
+        sys.exit(1)
 
+    #print(job_folder, job_cron_type, start_date_str, start_date, end_date_str, end_date)
     return job_folder, job_cron_type, start_date_str, start_date, end_date_str, end_date, password
 
 
 if __name__ == "__main__":
 
     top_level_folder_path, job_cron_type, start_date_str, start_date_obj, end_date_str, end_date_obj, encpwd = get_args()
+    delta = end_date_obj - start_date_obj
 
-    # Make sure the End Date is same or ahead of Start Date 
-    if end_date_obj >= start_date_obj:
-        delta = end_date_obj - start_date_obj
-        for d in range(delta.days + 1):
-            run_date_obj = start_date_obj + datetime.timedelta(days=d)
-            run_date = run_date_obj.strftime('%Y-%m-%d')
+    # Loop through the date range passed and generate CI Summary Report per day
+    for d in range(delta.days + 1):
+        run_date_obj = start_date_obj + datetime.timedelta(days=d)
+        run_date = run_date_obj.strftime('%Y-%m-%d')
 
-            # Get a timestamp for all the logs
-            ts = time.time()
-            run_timestamp = datetime.datetime.fromtimestamp(ts).strftime('%Y-%m-%d_%H-%M-%S')
+        # Get a timestamp for all the logs
+        ts = time.time()
+        run_timestamp = datetime.datetime.fromtimestamp(ts).strftime('%Y-%m-%d_%H-%M-%S')
 
-            # Get the run_date and run_timestamp folder created under audit, if it does not exist
-            jobs_output_data_folder = os.getcwd() + '/ci-metrics-python/' + run_date + '/'
-            run_timestamp_folder = jobs_output_data_folder + run_timestamp + '/'
-            if not os.path.exists(run_timestamp_folder):
-                os.makedirs(run_timestamp_folder)
+        # Get the run_date and run_timestamp folder created under audit, if it does not exist
+        jobs_output_data_folder = os.getcwd() + '/ci-metrics-python/' + run_date + '/'
+        run_timestamp_folder = jobs_output_data_folder + run_timestamp + '/'
+        if not os.path.exists(run_timestamp_folder):
+            os.makedirs(run_timestamp_folder)
 
-            # Output file for each find and ag command output
-            all_runs_file = run_timestamp_folder + 'find-command-for-job-runs.txt'
-            all_jobs_file = run_timestamp_folder + 'ag-command-for-job.txt'
+        # Output file for each find and ag command output
+        all_runs_file = run_timestamp_folder + 'find-command-for-job-runs.txt'
+        all_jobs_file = run_timestamp_folder + 'ag-command-for-job.txt'
 
-            # Get Jobs Metrics
-            generate_config_xml_file_list(top_level_folder_path, all_jobs_file, run_date)
-            all_jobs = process_config_xml_file_list(run_date, top_level_folder_path, run_timestamp, all_jobs_file,
-                                                    jobs_output_data_folder)
+        # Get Jobs Metrics
+        generate_config_xml_file_list(top_level_folder_path, all_jobs_file, run_date)
+        all_jobs = process_config_xml_file_list(run_date, top_level_folder_path, run_timestamp, all_jobs_file,
+                                                jobs_output_data_folder)
 
-            # Get Job Runs Metrics
-            generate_build_xml_file_list(top_level_folder_path, all_runs_file, run_date)
-            generate_build_xml_file_list_dump(run_date, run_timestamp, top_level_folder_path, all_runs_file,
-                                              jobs_output_data_folder, all_jobs, job_cron_type, encpwd)
-
+        # Get Job Runs Metrics
+        generate_build_xml_file_list(top_level_folder_path, all_runs_file, run_date)
+        process_build_xml_file_list(run_date, run_timestamp, top_level_folder_path, all_runs_file,
+                                          jobs_output_data_folder, all_jobs, job_cron_type, encpwd)
