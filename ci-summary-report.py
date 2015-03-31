@@ -1043,38 +1043,41 @@ def percentile(N, percent, key=lambda x: x):
 
 
 def parse_xml_file(build_xml_file_name):
-    job_number, job_duration, job_builton, job_result, process_build_status = "Undef", "Undef", "Undef", "Undef", "_ERR_"
+    job_number, job_duration, job_builton, job_result, job_trigger, job_triggered_by, process_build_status = "Undef", "Undef", "Undef", "Undef", "Undef", "Undef", "_ERR_"
     if os.path.isfile(build_xml_file_name):
         process_build_status = "SUCCESS"
         tree = ET.parse(build_xml_file_name)
         root = tree.getroot()
-        for child in root:
-            if child.tag == 'duration':
-                job_duration = child.text
-                if job_duration is None:
-                    job_duration = ""
-            elif child.tag == 'builtOn':
-                job_builton = child.text
-                if job_builton is None:
-                    job_builton = "Undef"
-            elif child.tag == 'result':
-                job_result = child.text
-                if job_result is None:
-                    job_result = "Undef"
-            elif child.tag == 'number':
-                job_number = child.text
-                if job_number is None:
-                    job_number = "Undef"
+        
+        for child in root.iter('duration'):
+            job_duration = child.text
+            if job_duration is None:
+                job_duration = ""
+        
+        for child in root.iter('builtOn'):
+            job_builton = child.text
+            if job_builton is None:
+                job_builton = "Undef"
+        
+        for child in root.iter('result'):
+            job_result = child.text
+            if job_result is None:
+                job_result = "Undef"
+        
+        for child in root.iter('number'):
+            job_number = child.text
+            if job_number is None:
+                job_number = "Undef"
 
-        job_trigger = "Undef"
-        job_triggered_by = "Undef"
         for trigger in root.iter('hudson.model.Cause_-UserIdCause'):
             job_trigger = "Manual"
             for child in trigger:
                 if child.tag == 'userId' and child.text is not None:
                     job_triggered_by = child.text
+
         for trigger in root.iter('hudson.triggers.TimerTrigger_-TimerTriggerCause'):
             job_trigger = "Scheduled"
+
         for trigger in root.iter('hudson.triggers.SCMTrigger_-SCMTriggerCause'):
             job_trigger = "SCM Triggered"
 
