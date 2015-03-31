@@ -248,6 +248,33 @@ def populate_job_run_details_hash(job_run_details_file):
                                                             'job_trigger': job_run_tokens_list[11],
                                                             'job_triggered_by': job_run_tokens_list[12],
                                                             }
+
+    job_run_file = open(job_run_details_file, 'w')
+    for jk, jr in job_run_details_hash.items():
+        build_xml_file_name = jk
+        job_key = jr['job_key']
+        job_name = jr['job_name']
+        job_number = jr['job_number']
+        job_duration = jr['job_duration']
+        job_builton = jr['job_builton']
+        job_result = jr['job_result']
+        job_date = jr['job_date']
+        job_time_hr = jr['job_time_hr']
+        job_time_min = jr['job_time_min']
+        job_url = jr['job_url']
+        job_trigger = jr['job_trigger']
+        job_triggered_by = jr['job_triggered_by']
+
+        if job_result == "Undef":
+            job_duration_updated, job_result_updated, process_build_status = parse_xml_file_for_select_elements(build_xml_file_name)
+            if process_build_status != '_ERR_':
+                job_result = job_result_updated
+                job_duration = job_duration_updated
+        
+        job_run_file.write(build_xml_file_name + '|' + job_key + '|' + job_name + '|' + job_number + '|' + job_duration + '|' + job_builton + '|' + job_result + '|' + job_date + '|' + job_time_hr + '|' + job_time_min + '|' + job_url + '|' + job_trigger + '|' + job_triggered_by + '|' + "\n")
+    
+    job_run_file.close()           
+
     return job_run_details_hash
 
 
@@ -270,7 +297,7 @@ def process_job_run_details_hash(run_date, run_timestamp, jobs_output_data_folde
 
     # Process all build.xml files in all-runs.txt and set up dictionary of dictionaries data structure
     for jk, jr in all_job_runs.items():
-        build_xml_file_name = jr
+        build_xml_file_name = jk
         job_key = jr['job_key']
         job_name = jr['job_name']
         job_number = jr['job_number']
@@ -1042,6 +1069,26 @@ def percentile(N, percent, key=lambda x: x):
     return d0 + d1
 
 
+def parse_xml_file_for_select_elements(build_xml_file_name):
+    job_duration, job_result, process_build_status = "Undef", "Undef", "_ERR_"
+    if os.path.isfile(build_xml_file_name):
+        process_build_status = "SUCCESS"
+        tree = ET.parse(build_xml_file_name)
+        root = tree.getroot()
+        
+        for child in root.iter('duration'):
+            job_duration = child.text
+            if job_duration is None:
+                job_duration = ""
+        
+        for child in root.iter('result'):
+            job_result = child.text
+            if job_result is None:
+                job_result = "Undef"
+
+    return job_duration, job_result, process_build_status
+
+
 def parse_xml_file(build_xml_file_name):
     job_number, job_duration, job_builton, job_result, job_trigger, job_triggered_by, process_build_status = "Undef", "Undef", "Undef", "Undef", "Undef", "Undef", "_ERR_"
     if os.path.isfile(build_xml_file_name):
@@ -1218,7 +1265,7 @@ def get_job_url_by_duration(node_duration_dict, node_max_duration_msec):
 def get_args():
     '''This function parses command line arguments and returns them '''
     parser = argparse.ArgumentParser(
-        description='Generate Jenkins (CI Platform) Jobs and Job Runs Summary Report By Date (or Date Range')
+        description='Generate Jenkins (CI Platform) Jobs and Job Runs Summary Report By Date (or Date Range)')
     parser.add_argument(
         '-f', '--folder', type=str, help='Jenkins Jobs folder path', required=True)
     parser.add_argument(
@@ -1231,7 +1278,7 @@ def get_args():
         '-p', '--password', type=str, help='Encoded password for mail server', default='')
 
     args = parser.parse_args()
-    job_folder = args.folder
+    job_folder = os.path.abspath(args.folder)
     job_cron_type = args.cron_type
     start_date_str = args.start_date
     end_date_str = args.end_date
