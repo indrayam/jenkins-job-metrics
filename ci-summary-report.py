@@ -956,19 +956,19 @@ def send_email(run_date, ci_metrics_report_plain, ci_metrics_report_html, job_cr
     email_pwd = codecs.decode(encpwd, 'rot_13')
     from_user = "anasharm@cisco.com"
     if job_cron_type == 'daily':
-        to_users = "cd-analytics@cisco.com"
+        to_users = ["cd-analytics@cisco.com"]
         subject = "CI Job Run Daily Summary Report for " + run_date
     elif job_cron_type == 'hourly':
-        to_users = "anasharm@cisco.com, sujmuthu@cisco.com"
+        to_users = ["anasharm@cisco.com, sujmuthu@cisco.com"]
         subject = "CI Job Run Hourly Summary Report for " + run_date
     else:
-        to_users = "anasharm@cisco.com"
+        to_users = ["anasharm@cisco.com"]
         subject = "CI Job Run Summary Report for " + run_date
 
     msg = MIMEMultipart('alternative')
     msg['Subject'] = subject
     msg['From'] = from_user
-    msg['To'] = to_users
+    msg['To'] = ", ".join(to_users)
 
     # Create the body of the message (a plain-text and an HTML version)
     text = ci_metrics_report_plain
