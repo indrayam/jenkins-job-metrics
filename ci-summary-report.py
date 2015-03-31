@@ -255,6 +255,7 @@ def process_job_run_details_hash(run_date, run_timestamp, jobs_output_data_folde
     # define variables to capture overall data
     total_num_of_job_runs = 0
     total_num_of_scheduled_job_runs = 0
+    total_num_of_scm_triggered_job_runs = 0
     total_num_of_manual_job_runs = 0
     job_users = {}
     job_runs = {}
@@ -287,11 +288,13 @@ def process_job_run_details_hash(run_date, run_timestamp, jobs_output_data_folde
         total_num_of_job_runs = total_num_of_job_runs + 1
         if job_trigger == "Scheduled":
             total_num_of_scheduled_job_runs = total_num_of_scheduled_job_runs + 1
-        else:
+        elif job_trigger == "Manual":
             total_num_of_manual_job_runs = total_num_of_manual_job_runs + 1
             if job_triggered_by not in job_users:
                 job_users[job_triggered_by] = 0
             job_users[job_triggered_by] = job_users[job_triggered_by] + 1
+        elif job_trigger == "SCM Triggered":
+            total_num_of_scm_triggered_job_runs = total_num_of_scm_triggered_job_runs + 1
 
         # Nodes Dictionary of Dictionaries
         if job_builton not in nodes:
@@ -341,12 +344,12 @@ def process_job_run_details_hash(run_date, run_timestamp, jobs_output_data_folde
 
     # Generate summary report
     generate_ci_summary_report(run_date, run_timestamp, all_jobs, total_num_of_job_runs, nodes, job_runs, job_results,
-                               job_runs_by_org, total_num_of_jobs_by_hr, total_num_of_scheduled_job_runs,
+                               job_runs_by_org, total_num_of_jobs_by_hr, total_num_of_scheduled_job_runs, total_num_of_scm_triggered_job_runs,
                                total_num_of_manual_job_runs, job_users, job_cron_type, encpwd)
 
 
 def generate_ci_summary_report(run_date, run_timestamp, all_jobs, total_num_of_job_runs, nodes, job_runs, job_results,
-                               job_runs_by_org, total_num_of_jobs_by_hr, total_num_of_scheduled_job_runs,
+                               job_runs_by_org, total_num_of_jobs_by_hr, total_num_of_scheduled_job_runs, total_num_of_scm_triggered_job_runs,
                                total_num_of_manual_job_runs, job_users, job_cron_type, encpwd):
     # print(all_jobs)
 
@@ -707,12 +710,13 @@ def generate_ci_summary_report(run_date, run_timestamp, all_jobs, total_num_of_j
     ci_metrics_report_plain = ci_metrics_report_plain + pfragment6
     ci_metrics_report_html = ci_metrics_report_html + hfragment6
 
-    fragment6a = "\tJob Runs that were Scheduled / Manually Run: " + green(
-        total_num_of_scheduled_job_runs) + ' / ' + green(total_num_of_manual_job_runs) + "\n"
-    pfragment6a = "\tJob Runs that were Scheduled / Manually Run: " + str(
-        total_num_of_scheduled_job_runs) + ' / ' + str(total_num_of_manual_job_runs) + "\n"
-    hfragment6a = "\t<span style=\" color: maroon\">Job Runs that were Scheduled / Manually Run:</span> " + "<strong style=\"color: green\">" + str(
-        total_num_of_scheduled_job_runs) + "</strong> / " + "<strong style=\"color: green\">" + str(
+    fragment6a = "\tJob Runs that were Scheduled, SCM Triggered or Manually Run: " + green(
+        total_num_of_scheduled_job_runs) + ', ' + green(total_num_of_scm_triggered_job_runs) + ', ' + green(total_num_of_manual_job_runs) + "\n"
+    pfragment6a = "\tJob Runs that were Scheduled, SCM Triggered or Manually Run: " + str(
+        total_num_of_scheduled_job_runs) + ', ' + str(total_num_of_scm_triggered_job_runs) + ', ' + str(total_num_of_manual_job_runs) + "\n"
+    hfragment6a = "\t<span style=\" color: maroon\">Job Runs that were Scheduled, SCM Triggered or Manually Run:</span> " + "<strong style=\"color: green\">" + str(
+        total_num_of_scheduled_job_runs) + "</strong>, " + "<strong style=\"color: green\">" + str(
+        total_num_of_scm_triggered_job_runs) + "</strong>, " + "<strong style=\"color: green\">" + str(
         total_num_of_manual_job_runs) + "</strong>" + "\n"
     ci_metrics_report = ci_metrics_report + fragment6a
     ci_metrics_report_plain = ci_metrics_report_plain + pfragment6a
@@ -1071,6 +1075,8 @@ def parse_xml_file(build_xml_file_name):
                     job_triggered_by = child.text
         for trigger in root.iter('hudson.triggers.TimerTrigger_-TimerTriggerCause'):
             job_trigger = "Scheduled"
+        for trigger in root.iter('hudson.triggers.SCMTrigger_-SCMTriggerCause'):
+            job_trigger = "SCM Triggered"
 
     return job_number, job_duration, job_builton, job_result, job_trigger, job_triggered_by, process_build_status
 
