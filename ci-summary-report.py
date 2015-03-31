@@ -932,7 +932,7 @@ def send_email(run_date, ci_metrics_report_plain, ci_metrics_report_html, job_cr
         to_users = "cd-analytics@cisco.com"
         subject = "CI Job Run Daily Summary Report for " + run_date
     elif job_cron_type == 'hourly':
-        to_users = "anasharm@cisco.com"
+        to_users = "anasharm@cisco.com, sujmuthu@cisco.com"
         subject = "CI Job Run Hourly Summary Report for " + run_date
     else:
         to_users = "anasharm@cisco.com"
