@@ -1,9 +1,4 @@
 INTRODUCTION:
 =============
-This repository contains scripts that I wrote to "act" on our fleet of
-Continuous Delivery Platforms. They include:
-- Jenkins
-- Atlassian Stash
-- Genuitec Secure Delivery Center
-- Atlassian Crucible
-- SonarQube's SonarSource
+This repository contains Python and Groovy scripts that I wrote in order to get
+a better sense of what was happening inside our CI Production instance
