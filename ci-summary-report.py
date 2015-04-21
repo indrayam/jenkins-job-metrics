@@ -642,12 +642,12 @@ def generate_ci_summary_report(run_date, run_timestamp, all_jobs, total_num_of_j
     ci_metrics_report = ci_metrics_report + '*' * 150 + "\n"
     ci_metrics_report_plain = ci_metrics_report_plain + '*' * 150 + "\n"
 
-    timestamp_date_str = datetime.datetime.now().strftime('%H:%M:%S') + " PDT"
+    timestamp_date_str = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S') + " PDT"
 
-    fragment1 = "Date of CI Job Run Metrics Report: " + yellow(run_date) + " [As of " + timestamp_date_str + "]\n"
-    pfragment1 = "Date of CI Job Run Metrics Report: " + str(run_date) + " [As of " + timestamp_date_str + "]\n"
+    fragment1 = "Date of CI Job Run Metrics Report: " + yellow(run_date) + " (As of " + timestamp_date_str + ")\n"
+    pfragment1 = "Date of CI Job Run Metrics Report: " + str(run_date) + " (As of " + timestamp_date_str + ")\n"
     hfragment1 = "<strong style=\"color: navy\">Date of CI Job Run Metrics Report:</strong> " + "<strong style=\"color: blue\">" + str(
-        run_date) + " [As of " + timestamp_date_str + "]</strong>" + "\n"
+        run_date) + " (As of " + timestamp_date_str + ")</strong>" + "\n"
     ci_metrics_report = ci_metrics_report + fragment1
     ci_metrics_report_plain = ci_metrics_report_plain + pfragment1
     ci_metrics_report_html = ci_metrics_report_html + hfragment1
