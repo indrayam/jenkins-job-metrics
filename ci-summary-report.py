@@ -462,15 +462,6 @@ def generate_ci_summary_report(run_date, run_timestamp, all_jobs, total_num_of_j
         else:
             all_jobs_by_cdd_count[job_details['cdd']] = all_jobs_by_cdd_count[job_details['cdd']] + 1
 
-    # print('By Org', all_jobs_by_org_count)
-    # print('By Type', all_jobs_by_type_count)
-    # print('By Status', all_jobs_by_status_count)
-    # print('By Timer', all_jobs_by_timer_count)
-    # print('By SCM', all_jobs_by_scm_count)
-    # print('By Artifactory', all_jobs_by_artifactory_count)
-    # print('By Sonar', all_jobs_by_sonar_count)
-    # print('By Appscan', all_jobs_by_appscan_count)
-    # print('By CDD', all_jobs_by_cdd_count)
     today = datetime.date.today()
     stoday = today.strftime('%Y-%m-%d')
     fragmentj3 = "Total Number of Unique Jobs in CI: " + green(total_num_of_jobs) + "\n"
@@ -651,10 +642,12 @@ def generate_ci_summary_report(run_date, run_timestamp, all_jobs, total_num_of_j
     ci_metrics_report = ci_metrics_report + '*' * 150 + "\n"
     ci_metrics_report_plain = ci_metrics_report_plain + '*' * 150 + "\n"
 
-    fragment1 = "Date of CI Job Run Metrics Report: " + yellow(run_date) + "\n"
-    pfragment1 = "Date of CI Job Run Metrics Report: " + str(run_date) + "\n"
+    timestamp_date_str = datetime.datetime.now().strftime('%H:%M:%S') + " PDT"
+
+    fragment1 = "Date of CI Job Run Metrics Report: " + yellow(run_date) + " [As of " + timestamp_date_str + "]\n"
+    pfragment1 = "Date of CI Job Run Metrics Report: " + str(run_date) + " [As of " + timestamp_date_str + "]\n"
     hfragment1 = "<strong style=\"color: navy\">Date of CI Job Run Metrics Report:</strong> " + "<strong style=\"color: blue\">" + str(
-        run_date) + "</strong>" + "\n"
+        run_date) + " [As of " + timestamp_date_str + "]</strong>" + "\n"
     ci_metrics_report = ci_metrics_report + fragment1
     ci_metrics_report_plain = ci_metrics_report_plain + pfragment1
     ci_metrics_report_html = ci_metrics_report_html + hfragment1
